@@ -66,3 +66,5 @@ python evaluation/comparing_models_bar_chart.py --preset model_zoo \
   noise σ=0.01, AdamW + `ReduceLROnPlateau`, effective batch size 64.
 - EDSR is fixed-scale (×4 only); CFNO/UFNO take `upsample_factor` as a forward
   argument (evaluated at ×4 and ×2).
+- *Maintainer:* upload new/updated weights with `python scripts/upload_weights.py`
+  (reads from the scratch training dirs; requires `huggingface-cli login`).
