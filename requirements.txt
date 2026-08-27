@@ -1,0 +1,38 @@
+# Environment for turbulence_sr.
+# The cluster provides these; versions are intentionally unpinned.
+# NOTE: jf1uids and autocvd are NOT on PyPI — install from source:
+#   - autocvd: https://github.com/jonasricker/autocvd
+#   - jf1uids: see https://doi.org/10.5281/zenodo.15052815
+
+# Core ML
+torch
+
+# Data generation & physics metrics (JAX side only)
+jax
+astropy
+
+# I/O & numerics
+h5py
+numpy
+scipy
+
+# Physics metrics (1-D power spectra)
+Pk_library
+
+# Config / CLI
+hydra-core>=1.3
+omegaconf
+pyyaml
+
+# Hyperparameter search (optional experiments)
+optuna
+
+# Analysis / plots
+pandas
+matplotlib
+
+# Model-zoo weight downloads
+huggingface_hub
+
+# Tests
+pytest

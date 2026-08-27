@@ -1,0 +1,53 @@
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false
+
+runtime:
+  autocvd:
+    enabled: false
+    num_gpus: 1
+
+data:
+  kind: 2d
+  kwargs: {}
+  splits:
+    train: 0.1
+    test: 0.02
+  loaders:
+    train_num_workers: 6
+    test_num_workers: 1
+    val_num_workers: 6
+    pin_memory: true
+    persistent_workers: true
+
+model:
+  module: src.model.models_fno2_2d
+  class_name: FNO_2
+  params:
+    in_channel: 4
+    apply_constraint: false
+    shifting_modes: 3
+    last_layer_kernel: 3
+
+grid:
+  modes: [12, 22, 32]
+  chan: [24, 32, 64]
+  res: [3]
+  op: [1, 2, 3]
+  last_layer_constraint: [relu, exp]
+
+training:
+  learning_rate: 0.0002
+  batch_size: 4
+  epochs: 100
+  use_amp: false
+  use_early_stopping: false
+  early_stopping_patience: 8
+  early_stopping_delta: 0.0
+  upsample_factor: 4
+
+output:
+  root_dir: experiments/fno_2d_grid_search

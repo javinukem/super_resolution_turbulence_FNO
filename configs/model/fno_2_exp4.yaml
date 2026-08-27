@@ -1,0 +1,13 @@
+name: fno_2_exp4
+module: experiments.cfno_2.experiment_4.fno_2_exp_2
+class_name: FNO_2
+params:
+  in_channel: 5
+  modes: 26
+  n_channels: 52
+  n_residual_blocks: 1
+  n_operator_blocks: 10
+  shifting_modes: 6
+  last_layer_kernel: 3
+  last_layer_constraint: relu
+tag_template: "m{modes}_nc{n_channels}_res{n_residual_blocks}_op{n_operator_blocks}_lk{last_layer_kernel}_{last_layer_constraint}"

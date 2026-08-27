@@ -1,0 +1,15 @@
+autocvd:
+  enabled: true
+  num_gpus: 1
+timestamp_format: "%Y%m%d"
+date_format: "%Y%m%d"
+output:
+  enabled: true
+  root_dir: model
+  run_dir_template: "cnn/{model_tag}"
+  weights_name_template: "cnn_weights_{date}.pt"
+  loss_curve_name_template: "loss_curve{date}.png"
+  config_name: "config.yaml"
+  save_config: true
+  save_weights: true
+  save_loss_curve: true

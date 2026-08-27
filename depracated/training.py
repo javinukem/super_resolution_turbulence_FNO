@@ -1,0 +1,117 @@
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+import yaml
+
+config = yaml.safe_load(open("config.yaml", "r"))
+
+from autocvd import autocvd
+
+autocvd(num_gpus=1)
+
+from torch.utils.data import random_split, DataLoader
+from src.dataloader.dataloader_3d import dataset_sr
+from src.training.training_cnn import training_model
+import torch
+import matplotlib.pyplot as plt
+from experiments.cfno_2.experiment_2.fno_2_exp_2 import FNO_2
+import os
+from datetime import datetime
+
+dataset = dataset_sr(max_samples=4000)
+train_size = int(0.8 * len(dataset))
+test_size = len(dataset) - train_size
+train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=config["training"]["batch_size"],
+    shuffle=True,
+    num_workers=1,
+    persistent_workers=True,
+    pin_memory=True,
+)
+
+test_loader = DataLoader(
+    test_dataset,
+    batch_size=config["training"]["batch_size"],
+    shuffle=False,
+    num_workers=1,
+    persistent_workers=True,
+    pin_memory=True,
+)
+
+fno_2_model = FNO_2(
+    in_channel=5,
+    modes=config["fno_2"]["modes"],
+    n_channels=config["fno_2"]["n_channels"],
+    n_residual_blocks=config["fno_2"]["n_residual_blocks"],
+    n_operator_blocks=config["fno_2"]["n_operator_blocks"],
+    apply_constraint=config["fno_2"]["apply_constraint"],
+    shifting_modes=config["fno_2"]["shifting_modes"],
+    last_layer_kernel=config["fno_2"]["last_layer_kernel"],
+    last_layer_constraint=config["fno_2"]["last_layer_constraint"]
+)
+
+test_losses, losses, fno_2_model = training_model(
+    fno_2_model,
+    None,
+    config["training"]["learning_rate"],
+    config["training"]["epochs"],
+    train_loader,
+    test_loader=test_loader,
+    use_amp=False,
+    upsample_factor=4,
+    use_early_stopping=False,
+)
+
+minimal_config = {
+    "fno_2": {
+        "modes": config["fno_2"]["modes"],
+        "n_channels": config["fno_2"]["n_channels"],
+        "n_residual_blocks": config["fno_2"]["n_residual_blocks"],
+        "n_operator_blocks": config["fno_2"]["n_operator_blocks"],
+        "apply_constraint": config["fno_2"]["apply_constraint"],
+        "shifting_modes": config["fno_2"]["shifting_modes"],
+        "last_layer_kernel": config["fno_2"]["last_layer_kernel"],
+        "last_layer_constraint": config["fno_2"]["last_layer_constraint"]
+
+    },
+    "training": {
+        "batch_size": config["training"]["batch_size"],
+        "learning_rate": config["training"]["learning_rate"],
+        "epochs": config["training"]["epochs"],
+    },
+}
+
+model_vars = (
+    f"m{minimal_config['fno_2']['modes']}_"
+    f"nc{minimal_config['fno_2']['n_channels']}_"
+    f"res{minimal_config['fno_2']['n_residual_blocks']}_"
+    f"op{minimal_config['fno_2']['n_operator_blocks']}_"
+    f"ac{int(minimal_config['fno_2']['apply_constraint'])}_"
+    f"lk{minimal_config['fno_2']['last_layer_kernel']}"
+    f"lc{minimal_config['fno_2']['last_layer_constraint']}"
+)
+
+date_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+exp_folder = os.path.join("experiments", "cfno_2","experiment_2", f"{date_str}_{model_vars}")
+os.makedirs(exp_folder, exist_ok=True)
+
+# Save the minimal config yaml
+with open(os.path.join(exp_folder, "config.yaml"), "w") as f:
+    yaml.dump(minimal_config, f)
+
+torch.save(fno_2_model.state_dict(), os.path.join(exp_folder, "weights.pt"))
+
+plt.figure()
+plt.plot(losses, label="Train Loss")
+plt.plot(test_losses, label="Test Loss", color="orange")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("Train vs Test Loss")
+plt.legend()
+plt.tight_layout()
+plt.savefig(os.path.join(exp_folder, "loss_curve.png"))
+plt.close()

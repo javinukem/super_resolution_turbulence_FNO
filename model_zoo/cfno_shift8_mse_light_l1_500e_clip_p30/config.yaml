@@ -1,0 +1,52 @@
+name: cfno_shift8_mse_light_l1_500e_clip_p30
+label: MSE + light L1 (clip=0.8, p=30)
+source_experiment: experiments/mse_loss_combinations
+weights:
+  huggingface_repo: javinukem/turbulence_sr
+  filename: cfno_shift8_mse_light_l1_500e_clip_p30/weights.pt
+  download: python scripts/download_weights.py
+model:
+  module: src.model.models_fno_2
+  class_name: FNO_2
+  params:
+    in_channel: 5
+    n_channels: 32
+    n_residual_blocks: 3
+    n_operator_blocks: 2
+    modes: 16
+    apply_constraint: false
+    last_layer_kernel: 3
+    shifting_modes: 8
+    interpolation_mode: trilinear
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear
+apply_positivity_relu: false
+normalization:
+  enabled: true
+  stats_path: model_zoo/normalization_stats.npz
+training:
+  optimizer: AdamW
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  epochs: 500
+  batch_size: 8
+  grad_accum: 8
+  effective_batch_size: 64
+  early_stop_patience: 40
+  grad_clip_norm: 0.8
+  scheduler:
+    type: ReduceLROnPlateau
+    factor: 0.8
+    patience: 30
+  noise_std: 0.01
+  use_amp: false
+  snapshot_index: 79
+loss:
+  type: mse+l1
+  spectral_weight: null
+  l1_weight: 0.061635317205680454
+  spectral_pool: 2
+results:
+  best_val_loss: 0.041128065723639265
+  final_train_loss: 0.040259097814559934
+  final_val_loss: 0.041128065723639265

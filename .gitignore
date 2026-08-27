@@ -1,0 +1,41 @@
+# ---------------- Python ----------------
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# ------------- Tooling / local -------------
+.opencode/
+.vscode/
+.idea/
+.DS_Store
+
+# ------------- Data artifacts -------------
+# Training data lives on cluster storage (see README "Data"); only small
+# scripts, specs and RNG seeds are tracked.
+*.h5
+*.npy
+*.npz
+!experiments/l1_spectral_weighting/normalization_stats.npz
+!model_zoo/normalization_stats.npz
+/data/final_states/
+/data/lr_states/
+/data/full_states_h5/
+/data/cfno_1/
+
+# ------------- Model weights & run outputs -------------
+# Weights are not tracked; published weights live on HuggingFace
+# (fetched via scripts/download_weights.py).
+*.pt
+/runs/
+/model/
+experiments/**/models/
+model_zoo/*/weights.pt

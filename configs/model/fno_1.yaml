@@ -1,0 +1,12 @@
+name: fno_1
+module: depracated.models_fno_1
+class_name: FNO_1
+params:
+  in_channel: 5
+  modes: 20
+  n_channels: 64
+  n_residual_blocks: 3
+  n_operator_blocks: 2
+  apply_constraint: true
+  shifting_modes: 4
+tag_template: "m{modes}_nc{n_channels}_res{n_residual_blocks}_op{n_operator_blocks}_ac{apply_constraint}_2"

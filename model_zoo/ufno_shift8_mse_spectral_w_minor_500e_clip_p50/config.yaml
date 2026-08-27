@@ -1,0 +1,52 @@
+name: ufno_shift8_mse_spectral_w_minor_500e_clip_p50
+label: UFNO op=2 drop=0.1 (500e, clip=0.8, p=30)
+source_experiment: experiments/ufno_mse_spectral
+weights:
+  huggingface_repo: javinukem/turbulence_sr
+  filename: ufno_shift8_mse_spectral_w_minor_500e_clip_p50/weights.pt
+  download: python scripts/download_weights.py
+model:
+  module: src.model.models_ufno_2
+  class_name: UFNO_2
+  params:
+    in_channel: 5
+    n_channels: 32
+    n_residual_blocks: 3
+    modes: 16
+    apply_constraint: false
+    last_layer_kernel: 3
+    shifting_modes: 8
+    interpolation_mode: trilinear
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear
+    n_operator_blocks: 2
+    dropout_rate: 0.1
+apply_positivity_relu: false
+normalization:
+  enabled: true
+  stats_path: model_zoo/normalization_stats.npz
+training:
+  optimizer: AdamW
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  epochs: 500
+  batch_size: 16
+  grad_accum: 4
+  effective_batch_size: 64
+  early_stop_patience: 50
+  grad_clip_norm: 0.8
+  scheduler:
+    type: ReduceLROnPlateau
+    factor: 0.8
+    patience: 35
+  noise_std: 0.01
+  use_amp: false
+  snapshot_index: 79
+loss:
+  type: mse_spectral
+  spectral_weight: 0.010326830153749945
+  spectral_pool: 2
+results:
+  best_val_loss: 0.023008361192686216
+  final_train_loss: 0.02319816991686821
+  final_val_loss: 0.0233977668519531

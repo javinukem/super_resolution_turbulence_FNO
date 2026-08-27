@@ -1,0 +1,6 @@
+paths:
+  model_folder: /export/data/jalegria/models/cfno_2/m16_nc32_res3_op2_ac0_lk3lcexp
+  output_path: /export/home/jalegria/Thesis/turbulence_sr/figures/spectra_comparison.png
+
+turbulent_sim:
+  gamma: 5/3

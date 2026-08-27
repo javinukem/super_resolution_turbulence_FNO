@@ -1,0 +1,12 @@
+learning_rate: 0.0002
+batch_size: 4
+epochs: 85
+use_amp: false
+use_float16: false
+use_early_stopping: false
+early_stopping_patience: 8
+early_stopping_delta: 0.0
+print_updates: false
+accumulate_gradients: null
+gpu_id: null
+upsample_factor: 4

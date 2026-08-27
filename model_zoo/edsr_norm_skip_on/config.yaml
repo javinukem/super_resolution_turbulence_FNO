@@ -1,0 +1,46 @@
+name: edsr_norm_skip_on
+label: EDSR norm (skip on)
+source_experiment: experiments/edsr_norm_skip
+weights:
+  huggingface_repo: javinukem/turbulence_sr
+  filename: edsr_norm_skip_on/weights.pt
+  download: python scripts/download_weights.py
+model:
+  module: src.model.models_edsr
+  class_name: EDSR
+  params:
+    input_channels: 5
+    n_resblocks: 16
+    n_feats: 64
+    kernel_size: 3
+    scale: 4
+    activation_f: prelu
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear
+apply_positivity_relu: false
+normalization:
+  enabled: true
+  stats_path: model_zoo/normalization_stats.npz
+training:
+  optimizer: AdamW
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  epochs: 250
+  batch_size: 8
+  grad_accum: 8
+  effective_batch_size: 64
+  early_stop_patience: 40
+  scheduler:
+    type: ReduceLROnPlateau
+    factor: 0.5
+    patience: 3
+  grad_clip_norm: 1.0
+  noise_std: 0.01
+  use_amp: false
+  snapshot_index: 79
+loss:
+  type: mse
+results:
+  best_val_loss: 0.03606298422584167
+  final_train_loss: 0.036465722396969796
+  final_val_loss: 0.03606298422584167
