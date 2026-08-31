@@ -81,14 +81,23 @@ Never save files outside of:
 
 Do NOT write to shared `/tmp`, other users' dirs, or any path not under `jalegria`'s personal namespaces. Before writing any file (logs, dumps, temp files, checkpoints), verify the path starts with one of the above prefixes. Note that multiple existing files already have hardcoded absolute paths under `/export/{data,scratch}/jalegria/...` — mirror that convention rather than introducing new root paths.
 
-## Experiment conventions — plotting & outputs
+## Experiment conventions — the unified engine
 
-Recent experiments (`mse_spectral_weighting/`, `edsr_norm_skip/`) split the work across a `run.sh` that orchestrates separate, single-purpose Python scripts. The conventions below are **mandatory for new experiments**; do not regress to the monolithic single-file style of `loss_ablation/train_loss_ablation.py`.
+All manifest-era experiments train through **one engine**: `src/training/experiment.py`, driven by a declarative `experiments/<name>/experiment.yaml` (run grid, losses, hyperparameters, normalization, references, trilinear flag). Invoke per experiment:
 
-- **Don't put everything in one Python file.** The training script trains + writes the manifest + runs the benchmark eval and writes `benchmark_metrics.csv` only. Bar charts and final-snapshot state-grid plots live in **separate** scripts (or are invoked from `run.sh`). The jf1uids sim + state-grid code is the slowest/heaviest stage — keep it out of the training process.
+```bash
+python -m src.training.experiment experiments/<name>/experiment.yaml
+python -m src.training.experiment experiments/<name>/experiment.yaml --run <run_name>   # single run
+python -m src.training.experiment --manifest <run-group dir>                            # eval-only
+```
+
+The engine owns the training loop (AdamW + ReduceLROnPlateau, grad accumulation, noise, early stopping, optional clipping/AMP), `weights.pt`/`losses.csv`/`loss_curve.png`/`config.json`, the run-group `manifest.json`, and the benchmark stage (`benchmark_metrics.csv` via `evaluation.benchmark`, copied to the home experiment folder). Do NOT write a new per-experiment training script — add a `runs:` entry to the experiment's YAML. Legacy frozen scripts remain only under `cfno_2/`, `edsr/`, `training_best_models_experiment/`, `trying_new_losses_and_norm/`, `train_fno2_grid_modes_interp_skip_losses_refine/`.
+
+Beyond training, the conventions below are **mandatory for new experiments**:
+
 - **Bar charts via the shared `evaluation/comparing_models_bar_chart.py`.** Do NOT write a bespoke bar-chart plotting routine inside the experiment. Add a preset to `_PRESET_BUILDERS` (and `PRESET_NAMES` + a `_*_manifest()` discovery helper) and invoke it from `run.sh` with `--output <path>`. Cross-experiment comparison is one of the preset's jobs; reuse it.
 - **Plots and `benchmark_metrics.csv` go in the home experiment folder** (`experiments/<name>/`), NOT in the scratch run dir. The scratch dir holds `weights.pt`, per-run `loss_curve.png`, `losses.csv`, `config.json`, `manifest.json`, `summary.json` (all tied to a particular training run-group). The aggregate artifacts that a human inspects across runs — `comparing_models_bar_chart_<preset>.png`, `final_snapshot_comparison.png`, `comparison_states.npy`, `benchmark_metrics.csv` — are copied/written to the home experiment folder so they survive scratch cleanup and are version-controlled.
-- **`run.sh` orchestrates the stages**, each as its own `python …` invocation (autocvd runs inside each child, not in the wrapper). Typical stages: (1) optional `calibrate_<...>.py`, (2) `train_<name>.py`, (3) `evaluation/comparing_models_bar_chart.py --preset <name> --output experiments/<name>/comparing_models_bar_chart_<name>.png`, (4) `plot_final_snapshot.py`. The wrapper only sets `CUDA_VISIBLE_DEVICES` and forwards `"$@"` to the training stage.
+- **`run.sh` orchestrates the stages**, each as its own `python …` invocation (autocvd runs inside each child, not in the wrapper). Typical stages: (1) optional `calibrate_<...>.py`, (2) `python -m src.training.experiment experiments/<name>/experiment.yaml`, (3) `evaluation/comparing_models_bar_chart.py --preset <name> --output experiments/<name>/comparing_models_bar_chart_<name>.png`, (4) `plot_final_snapshot.py`. The wrapper only sets `CUDA_VISIBLE_DEVICES` and forwards `"$@"` to the training stage.
 
 ## Behavioral guidelines
 

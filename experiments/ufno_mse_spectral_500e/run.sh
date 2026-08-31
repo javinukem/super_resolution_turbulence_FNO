@@ -33,7 +33,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 export CUDA_VISIBLE_DEVICES
 
 echo "== Stage 1/3: train UFNO (best config, MSE+spectral, 500e clip_p10) =="
-python "${SCRIPT_DIR}/train_ufno_mse_spectral_500.py" "$@"
+cd "${REPO_ROOT}" && python -m src.training.experiment "${SCRIPT_DIR}/experiment.yaml" "$@"
 
 echo "== Stage 2/4: bar-chart comparison @ x4 (preset ufno_mse_spectral_500) =="
 python "${REPO_ROOT}/evaluation/comparing_models_bar_chart.py" \

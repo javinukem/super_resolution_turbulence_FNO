@@ -72,9 +72,16 @@ python train.py preset=dsfno     # or cnn, fno_2_2d, fno_2_exp4 (default: fno_1)
 python train.py --cfg job        # compose config without running
 ```
 
-Recent flagship experiments (CFNO/UFNO norm-on regime) are self-contained under
-`experiments/<name>/` with a `run.sh` orchestrator — see
-[`experiments/experiment_summary.md`](experiments/experiment_summary.md) and
+**Run an experiment** (unified engine; one declarative YAML per experiment
+under `experiments/<name>/experiment.yaml` — run grids, loss combinations,
+optimizer schedules):
+
+```bash
+python -m src.training.experiment experiments/mse_loss_combinations/experiment.yaml
+bash experiments/edsr_norm_skip/run.sh     # trains + benchmark + bar chart + snapshot plot
+```
+
+See [`experiments/experiment_summary.md`](experiments/experiment_summary.md) and
 [`experiments/MODELS.md`](experiments/MODELS.md) (full model catalog).
 
 **Run the tests** (GPU-free smoke tests):
@@ -107,7 +114,7 @@ configs/            Hydra config tree (model/ data/ training/ runtime/ preset/)
 data/               dataset spec, split script, RNG seeds (artifacts ignored)
 docs/               per-experiment and per-model design notes
 evaluation/         benchmark.py, manifest.py, comparing_models_bar_chart.py
-experiments/        one folder per experiment (train scripts + aggregated results)
+experiments/        one folder per experiment (experiment.yaml run grid + plots + results)
 figures/            plotting scripts
 model_zoo/          published models: configs, manifest, benchmark CSV (weights on HF)
 notebooks/          exploratory notebooks (outputs stripped)
@@ -116,7 +123,7 @@ src/
   dataset_generation/  jf1uids (JAX) data synthesis — reads legacy config.yaml
   dataloader/          lazy HDF5 datasets
   model/               FNO_2/CFNO, UFNO_2, EDSR, DSFNO, FNO_1 (depracated/)
-  training/            training loops
+  training/            training loops + the unified experiment engine
   utils/               pipeline.py (Hydra builders, save/load artifacts)
 tests/              unittest smoke tests (pytest-compatible)
 train.py            Hydra training entrypoint

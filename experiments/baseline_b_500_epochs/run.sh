@@ -23,7 +23,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 export CUDA_VISIBLE_DEVICES
 
 echo "== Stage 1/3: train Baseline B (500 epochs) =="
-python "${SCRIPT_DIR}/train_baseline_b_500.py" "$@"
+cd "${REPO_ROOT}" && python -m src.training.experiment "${SCRIPT_DIR}/experiment.yaml" "$@"
 
 echo "== Stage 2/3: bar-chart comparison (preset baseline_b_500_vs_edsr) =="
 python "${REPO_ROOT}/evaluation/comparing_models_bar_chart.py" \

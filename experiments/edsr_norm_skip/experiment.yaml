@@ -1,0 +1,72 @@
+# Experiment config — consumed by src/training/experiment.py
+# (transcribed from the original train script; see experiment_summary.md)
+
+experiment: edsr_norm_skip
+output:
+  scratch_root: /export/scratch/jalegria/experiments
+  folder_prefix: edsr_norm_skip_
+  repo_dir: experiments/edsr_norm_skip
+data:
+  train_h5: /export/scratch/jalegria/full_states_h5/full_states.h5
+  val_h5: /export/scratch/jalegria/full_states_h5/full_states_val.h5
+  snapshot_index: 79
+  upsample_factor: 4
+  num_workers: 2
+  eval_batch_size: 2
+normalization:
+  stats_path: experiments/l1_spectral_weighting/normalization_stats.npz
+spectral_pool: 2
+trilinear_baseline: false
+training:
+  epochs: 250
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  batch_size: 8
+  grad_accum: 8
+  noise_std: 0.01
+  early_stop_patience: 40
+  sched_factor: 0.5
+  sched_patience: 3
+  grad_clip_norm: 1.0
+  use_amp: false
+runs:
+- name: edsr_norm_skip_off
+  label: EDSR norm (skip off)
+  model_type: edsr
+  model_params:
+    input_channels: 5
+    n_resblocks: 16
+    n_feats: 64
+    kernel_size: 3
+    scale: 4
+    activation_f: prelu
+    skip_connection: false
+    skip_connection_interpolation_mode: trilinear
+  apply_positivity_relu: false
+  use_norm: true
+  eval_scales:
+  - 4
+  loss:
+    type: mse
+  manifest_extra:
+    skip_connection: false
+- name: edsr_norm_skip_on
+  label: EDSR norm (skip on)
+  model_type: edsr
+  model_params:
+    input_channels: 5
+    n_resblocks: 16
+    n_feats: 64
+    kernel_size: 3
+    scale: 4
+    activation_f: prelu
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear
+  apply_positivity_relu: false
+  use_norm: true
+  eval_scales:
+  - 4
+  loss:
+    type: mse
+  manifest_extra:
+    skip_connection: true

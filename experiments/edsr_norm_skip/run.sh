@@ -25,7 +25,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 export CUDA_VISIBLE_DEVICES
 
 echo "== Stage 1/3: train EDSR (norm-on, skip off/on) =="
-python "${SCRIPT_DIR}/train_edsr_norm_skip.py" "$@"
+cd "${REPO_ROOT}" && python -m src.training.experiment "${SCRIPT_DIR}/experiment.yaml" "$@"
 
 echo "== Stage 2/3: bar-chart comparison (preset edsr_norm_skip) =="
 python "${REPO_ROOT}/evaluation/comparing_models_bar_chart.py" \

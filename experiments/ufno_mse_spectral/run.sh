@@ -26,11 +26,12 @@
 # override (default 0). Pass extra args through to the training stage.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 : "${CUDA_VISIBLE_DEVICES:=0}"
 export CUDA_VISIBLE_DEVICES
 
 echo "== Stage 1/3: train UFNO (best config, MSE+spectral, 500e clip_p30) =="
-python "${SCRIPT_DIR}/train_ufno_mse_spectral.py" "$@"
+cd "${REPO_ROOT}" && python -m src.training.experiment "${SCRIPT_DIR}/experiment.yaml" "$@"
 
 echo "== Stage 2/3: final-snapshot comparison (full + zoom) =="
 python "${SCRIPT_DIR}/plot_final_snapshot.py"

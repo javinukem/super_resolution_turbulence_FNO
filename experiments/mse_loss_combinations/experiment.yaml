@@ -1,0 +1,104 @@
+# Experiment config — consumed by src/training/experiment.py
+# (transcribed from the original train script; see experiment_summary.md)
+
+experiment: mse_loss_combinations
+output:
+  scratch_root: /export/scratch/jalegria/experiments
+  folder_prefix: mse_loss_combinations_
+  repo_dir: experiments/mse_loss_combinations
+data:
+  train_h5: /export/scratch/jalegria/full_states_h5/full_states.h5
+  val_h5: /export/scratch/jalegria/full_states_h5/full_states_val.h5
+  snapshot_index: 79
+  upsample_factor: 4
+  num_workers: 2
+  eval_batch_size: 2
+normalization:
+  stats_path: experiments/l1_spectral_weighting/normalization_stats.npz
+spectral_pool: 2
+trilinear_baseline: false
+training:
+  epochs: 500
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  batch_size: 8
+  grad_accum: 8
+  noise_std: 0.01
+  early_stop_patience: 40
+  sched_factor: 0.8
+  sched_patience: 30
+  grad_clip_norm: 0.8
+  use_amp: false
+runs:
+- name: cfno_shift8_mse_light_spectral_500e_clip_p30
+  label: MSE + light spectral (clip=0.8, p=30)
+  model_type: cfno
+  model_params:
+    in_channel: 5
+    n_channels: 32
+    n_residual_blocks: 3
+    n_operator_blocks: 2
+    modes: 16
+    apply_constraint: false
+    last_layer_kernel: 3
+    shifting_modes: 8
+  apply_positivity_relu: false
+  use_norm: true
+  eval_scales: &id001
+  - 4
+  - 2
+  loss:
+    type: mse_spectral
+    spectral_weight: 0.0063649745225556375
+    weight_name: w_minor
+  manifest_extra:
+    interpolation_mode: trilinear
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear
+- name: cfno_shift8_mse_light_l1_500e_clip_p30
+  label: MSE + light L1 (clip=0.8, p=30)
+  model_type: cfno
+  model_params:
+    in_channel: 5
+    n_channels: 32
+    n_residual_blocks: 3
+    n_operator_blocks: 2
+    modes: 16
+    apply_constraint: false
+    last_layer_kernel: 3
+    shifting_modes: 8
+  apply_positivity_relu: false
+  use_norm: true
+  eval_scales: *id001
+  loss:
+    type: mse_l1
+    l1_weight: 0.061635317205680454
+    weight_name: w_minor
+  manifest_extra:
+    interpolation_mode: trilinear
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear
+- name: cfno_shift8_mse_light_spectral_l1_500e_clip_p30
+  label: MSE + light spectral + light L1 (clip=0.8, p=30)
+  model_type: cfno
+  model_params:
+    in_channel: 5
+    n_channels: 32
+    n_residual_blocks: 3
+    n_operator_blocks: 2
+    modes: 16
+    apply_constraint: false
+    last_layer_kernel: 3
+    shifting_modes: 8
+  apply_positivity_relu: false
+  use_norm: true
+  eval_scales: *id001
+  loss:
+    type: mse_spectral_l1
+    spectral_weight: 0.0063649745225556375
+    l1_weight: 0.061635317205680454
+    weight_name: w_minor
+  manifest_extra:
+    interpolation_mode: trilinear
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear

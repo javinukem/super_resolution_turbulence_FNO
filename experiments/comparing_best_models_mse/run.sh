@@ -24,7 +24,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 export CUDA_VISIBLE_DEVICES
 
 echo "== Stage 1/2: train CFNO (shift=8, MSE only, 500e clip_p30) =="
-python "${SCRIPT_DIR}/train_comparing_best_models_mse.py" "$@"
+cd "${REPO_ROOT}" && python -m src.training.experiment "${SCRIPT_DIR}/experiment.yaml" "$@"
 
 echo "== Stage 2/2: bar-chart comparison (preset comparing_best_models_mse) =="
 python "${REPO_ROOT}/evaluation/comparing_models_bar_chart.py" \

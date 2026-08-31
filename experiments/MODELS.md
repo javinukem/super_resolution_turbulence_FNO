@@ -2,6 +2,8 @@
 
 Reference for future instances: every model variant, where its architecture lives, which configs/experiments use it, its architectural and training particularities, and the three designated **baselines**. `experiments/cfno_2/` and `experiments/edsr/` are deliberately excluded (outdated).
 
+> **Training is consolidated**: "Trained by `experiments/<name>/train_*.py`" below means the experiment's `experiments/<name>/experiment.yaml` run grid, executed by the unified engine `src/training/experiment.py`. The old per-experiment train scripts were removed.
+
 ---
 
 ## Global conventions

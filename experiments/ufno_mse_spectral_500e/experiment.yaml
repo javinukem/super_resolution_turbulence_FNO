@@ -1,0 +1,63 @@
+# Experiment config — consumed by src/training/experiment.py
+# (transcribed from the original train script; see experiment_summary.md)
+
+experiment: ufno_mse_spectral_500e
+output:
+  scratch_root: /export/scratch/jalegria/experiments
+  folder_prefix: ufno_mse_spectral_500e_
+  repo_dir: experiments/ufno_mse_spectral_500e
+data:
+  train_h5: /export/scratch/jalegria/full_states_h5/full_states.h5
+  val_h5: /export/scratch/jalegria/full_states_h5/full_states_val.h5
+  snapshot_index: 79
+  upsample_factor: 4
+  num_workers: 2
+  eval_batch_size: 2
+normalization:
+  stats_path: experiments/l1_spectral_weighting/normalization_stats.npz
+spectral_pool: 2
+trilinear_baseline: false
+training:
+  epochs: 500
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  batch_size: 16
+  grad_accum: 4
+  noise_std: 0.01
+  early_stop_patience: 40
+  sched_factor: 0.5
+  sched_patience: 10
+  grad_clip_norm: 1.0
+  use_amp: false
+runs:
+- name: ufno_shift8_mse_spectral_w_minor_500e_clip_p10
+  label: UFNO op=2 drop=0.1 (500e, clip=1.0, p=10)
+  model_type: ufno
+  model_params:
+    in_channel: 5
+    n_channels: 32
+    n_residual_blocks: 3
+    modes: 16
+    apply_constraint: false
+    last_layer_kernel: 3
+    shifting_modes: 8
+    interpolation_mode: trilinear
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear
+    n_operator_blocks: 2
+    dropout_rate: 0.1
+  apply_positivity_relu: false
+  use_norm: true
+  eval_scales:
+  - 4
+  - 2
+  loss:
+    type: mse_spectral
+    spectral_weight: 0.0063649745225556375
+    weight_name: w_minor
+  manifest_extra:
+    interpolation_mode: trilinear
+    skip_connection: true
+    skip_connection_interpolation_mode: trilinear
+    n_operator_blocks: 2
+    dropout_rate: 0.1

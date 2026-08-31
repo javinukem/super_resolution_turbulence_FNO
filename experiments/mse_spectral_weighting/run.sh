@@ -27,7 +27,7 @@ echo "== Stage 1/4: calibrate spectral weights =="
 python "${SCRIPT_DIR}/calibrate_weights.py"
 
 echo "== Stage 2/4: train (MSE + spectral, 3 weights) =="
-python "${SCRIPT_DIR}/train_mse_spectral.py" "$@"
+cd "${REPO_ROOT}" && python -m src.training.experiment "${SCRIPT_DIR}/experiment.yaml" "$@"
 
 echo "== Stage 3/4: bar-chart comparison (preset mse_spectral) =="
 python "${REPO_ROOT}/evaluation/comparing_models_bar_chart.py" \
