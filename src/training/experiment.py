@@ -126,6 +126,8 @@ from evaluation.manifest import (
     load_norm_stats,
 )
 
+from src.losses.spectral_mse import SpectralLoss
+
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -149,32 +151,6 @@ def get_velocity_indices() -> tuple[int, int, int]:
 # =====================================================================
 
 
-class SpectralLoss(nn.Module):
-    """Velocity-only torch-FFT log-power spectral loss."""
-
-    def __init__(self, vx_idx: int, vy_idx: int, vz_idx: int, pool: int = 2):
-        super().__init__()
-        self.vel_idx = [vx_idx, vy_idx, vz_idx]
-        self.pool = pool
-
-    def forward(self, pred: torch.Tensor, target: torch.Tensor):
-        pred_v = pred[:, self.vel_idx]
-        target_v = target[:, self.vel_idx]
-        if self.pool > 1:
-            pred_v = F.avg_pool3d(pred_v, kernel_size=self.pool)
-            target_v = F.avg_pool3d(target_v, kernel_size=self.pool)
-        pred_fft = torch.fft.rfftn(pred_v, dim=(-3, -2, -1), norm="ortho")
-        target_fft = torch.fft.rfftn(target_v, dim=(-3, -2, -1), norm="ortho")
-        pred_power = pred_fft.real.square() + pred_fft.imag.square()
-        target_power = target_fft.real.square() + target_fft.imag.square()
-        pred_power = pred_power.mean(dim=1)
-        target_power = target_power.mean(dim=1)
-        pred_log = torch.log10(pred_power + 1e-12)
-        target_log = torch.log10(target_power + 1e-12)
-        spec = F.mse_loss(pred_log, target_log)
-        return spec, {"spectral": spec.item()}
-
-
 class _ScalarLoss(nn.Module):
     """Wrap a plain reduction='mean' loss so forward returns (loss, metrics)."""
 
@@ -190,8 +166,9 @@ class _ScalarLoss(nn.Module):
 class MSESpectralLoss(nn.Module):
     """MSE + weighted velocity spectral loss."""
 
-    def __init__(self, spectral_weight: float, vx: int, vy: int, vz: int,
-                 pool: int = 2):
+    def __init__(
+        self, spectral_weight: float, vx: int, vy: int, vz: int, pool: int = 2
+    ):
         super().__init__()
         self.mse = nn.MSELoss()
         self.spectral = SpectralLoss(vx, vy, vz, pool)
@@ -202,14 +179,18 @@ class MSESpectralLoss(nn.Module):
         spec, _ = self.spectral(pred, target)
         total = mse + self.spectral_weight * spec
         return total, {
-            "mse": mse.item(), "spectral": spec.item(), "total": total.item(),
+            "mse": mse.item(),
+            "spectral": spec.item(),
+            "total": total.item(),
         }
 
 
 class L1SpectralLoss(nn.Module):
     """L1 + weighted velocity spectral loss."""
 
-    def __init__(self, spectral_weight: float, vx: int, vy: int, vz: int, pool: int = 2):
+    def __init__(
+        self, spectral_weight: float, vx: int, vy: int, vz: int, pool: int = 2
+    ):
         super().__init__()
         self.l1 = nn.L1Loss()
         self.spectral = SpectralLoss(vx, vy, vz, pool)
@@ -241,8 +222,15 @@ class MSEL1Loss(nn.Module):
 class MSESpectralL1Loss(nn.Module):
     """MSE + weighted spectral + weighted L1."""
 
-    def __init__(self, spectral_weight: float, l1_weight: float,
-                 vx: int, vy: int, vz: int, pool: int = 2):
+    def __init__(
+        self,
+        spectral_weight: float,
+        l1_weight: float,
+        vx: int,
+        vy: int,
+        vz: int,
+        pool: int = 2,
+    ):
         super().__init__()
         self.mse = nn.MSELoss()
         self.spectral = SpectralLoss(vx, vy, vz, pool)
@@ -263,8 +251,9 @@ class MSESpectralL1Loss(nn.Module):
         }
 
 
-def build_loss_fn(loss_cfg: dict, vx: int, vy: int, vz: int,
-                  pool: int = 2) -> nn.Module:
+def build_loss_fn(
+    loss_cfg: dict, vx: int, vy: int, vz: int, pool: int = 2
+) -> nn.Module:
     """Return the loss module for a run's ``loss`` config block."""
     loss_cfg = dict(loss_cfg or {"type": "mse"})
     t = loss_cfg["type"]
@@ -374,9 +363,19 @@ def save_run_artifacts(
             **{
                 k: v
                 for k, v in run.items()
-                if k not in {"name", "label", "model_type", "model_params",
-                             "apply_positivity_relu", "use_norm", "eval_scales",
-                             "loss", "training", "manifest_extra"}
+                if k
+                not in {
+                    "name",
+                    "label",
+                    "model_type",
+                    "model_params",
+                    "apply_positivity_relu",
+                    "use_norm",
+                    "eval_scales",
+                    "loss",
+                    "training",
+                    "manifest_extra",
+                }
             },
         },
         "model_params": run.get("model_params") or {},
@@ -485,8 +484,10 @@ def train_one_run(
     print(f"\n{'=' * 60}")
     print(f"  Training: {name}")
     print(f"  loss: {run.get('loss') or {'type': 'mse'}}")
-    print(f"  lr={train_cfg['learning_rate']}  clip={train_cfg.get('grad_clip_norm')}"
-          f"  sched_patience={train_cfg['sched_patience']}")
+    print(
+        f"  lr={train_cfg['learning_rate']}  clip={train_cfg.get('grad_clip_norm')}"
+        f"  sched_patience={train_cfg['sched_patience']}"
+    )
     print(f"{'=' * 60}")
 
     model = build_run_model(run).to(DEVICE)
@@ -499,7 +500,8 @@ def train_one_run(
         weight_decay=train_cfg["weight_decay"],
     )
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min",
+        optimizer,
+        mode="min",
         factor=train_cfg["sched_factor"],
         patience=train_cfg["sched_patience"],
     )
@@ -507,7 +509,9 @@ def train_one_run(
     vx, vy, vz = get_velocity_indices()
     loss_fn = build_loss_fn(
         run.get("loss"),
-        vx, vy, vz,
+        vx,
+        vy,
+        vz,
         config.get("spectral_pool", 2),
     )
     use_amp = bool(train_cfg.get("use_amp", False))
@@ -604,8 +608,14 @@ def train_one_run(
 
     run_dir = output_dir / name
     save_run_artifacts(
-        run_dir, run, train_cfg, best_state,
-        train_losses, val_losses, best_val_loss, config,
+        run_dir,
+        run,
+        train_cfg,
+        best_state,
+        train_losses,
+        val_losses,
+        best_val_loss,
+        config,
     )
     print(f"  Saved to {run_dir}")
     print(f"  Best val loss: {best_val_loss:.6f}")
@@ -813,10 +823,22 @@ def run_eval_and_plots(manifest: dict, output_dir: Path, config: dict) -> None:
     eval_rows = evaluate_all(manifest, val_loader_raw, metrics, norm_stats)
     eval_df = pd.DataFrame(eval_rows)
     preferred = [
-        "run", "model", "upsample_factor", "MSE",
-        "Loss_pressure", "Loss_density", "Loss_vx", "Loss_vy", "Loss_vz",
-        "Loss_v_norm", "Loss_vorticity", "Spectral_MSE", "Perceptual",
-        "PSNR", "SSIM", "time_s",
+        "run",
+        "model",
+        "upsample_factor",
+        "MSE",
+        "Loss_pressure",
+        "Loss_density",
+        "Loss_vx",
+        "Loss_vy",
+        "Loss_vz",
+        "Loss_v_norm",
+        "Loss_vorticity",
+        "Spectral_MSE",
+        "Perceptual",
+        "PSNR",
+        "SSIM",
+        "time_s",
     ]
     eval_df = eval_df[[c for c in preferred if c in eval_df.columns]]
     scratch_csv = output_dir / "benchmark_metrics.csv"
@@ -898,8 +920,9 @@ def main() -> None:
     print(f"Train data       : {data_cfg['train_h5']}")
     print(f"Val data         : {data_cfg['val_h5']}")
     print(f"Snapshot index   : {data_cfg['snapshot_index']}")
-    print(f"Epochs           : {tcfg['epochs']} "
-          f"(patience {tcfg['early_stop_patience']})")
+    print(
+        f"Epochs           : {tcfg['epochs']} (patience {tcfg['early_stop_patience']})"
+    )
     print(f"Optimizer        : AdamW(wd={tcfg['weight_decay']}) + ReduceLROnPlateau")
     print(f"Noise std        : {tcfg['noise_std']}")
     print(
@@ -978,7 +1001,10 @@ def main() -> None:
                 output_dir,
                 config,
             )
-            results[run_config["name"]] = {"status": "success", "best_val_loss": best_val}
+            results[run_config["name"]] = {
+                "status": "success",
+                "best_val_loss": best_val,
+            }
         except Exception as e:
             print(f"  FAILED: {e}")
             traceback.print_exc()
@@ -996,7 +1022,9 @@ def main() -> None:
             print(f"  {name:55s}  {result['status'].upper()}")
 
     with open(output_dir / "summary.json", "w") as f:
-        json.dump({"output_dir": str(output_dir), "runs": results}, f, indent=2, default=str)
+        json.dump(
+            {"output_dir": str(output_dir), "runs": results}, f, indent=2, default=str
+        )
 
     del train_loader, val_loader, train_ds, val_ds
     gc.collect()

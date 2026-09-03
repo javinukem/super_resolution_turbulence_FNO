@@ -14,7 +14,7 @@ data:
   num_workers: 2
   eval_batch_size: 2
 normalization:
-  stats_path: experiments/l1_spectral_weighting/normalization_stats.npz
+  stats_path: model_zoo/normalization_stats.npz
 spectral_pool: 2
 trilinear_baseline: false
 training:

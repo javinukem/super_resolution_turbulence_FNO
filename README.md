@@ -68,7 +68,7 @@ python evaluation/comparing_models_bar_chart.py --preset model_zoo \
 **Train a model** (Hydra; end-to-end presets compose model+data+training):
 
 ```bash
-python train.py preset=dsfno     # or cnn, fno_2_2d, fno_2_exp4 (default: fno_1)
+python train.py preset=dsfno     # or cnn, fno_2_2d (default: fno_1)
 python train.py --cfg job        # compose config without running
 ```
 

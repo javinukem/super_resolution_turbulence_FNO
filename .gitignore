@@ -24,7 +24,6 @@ venv/
 *.h5
 *.npy
 *.npz
-!experiments/l1_spectral_weighting/normalization_stats.npz
 !model_zoo/normalization_stats.npz
 /data/final_states/
 /data/lr_states/

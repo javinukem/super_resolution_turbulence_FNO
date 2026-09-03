@@ -5,14 +5,16 @@ This directory contains all hyperparameter search and ablation experiments for t
 from low-resolution turbulence simulation snapshots to high-resolution ones, using
 neural-operator and CNN architectures.
 
-> **Training is consolidated**: every manifest-era experiment trains through the
+> **Training is consolidated**: every retained experiment trains through the
 > unified engine `src/training/experiment.py`, configured by the
 > `experiment.yaml` in each folder (`python -m src.training.experiment
 > experiments/<name>/experiment.yaml`). Historical references below to
 > per-experiment `train_*.py` scripts correspond to that experiment's
-> `experiment.yaml` run grid. A few legacy frozen scripts remain under
-> `cfno_2/`, `edsr/`, `training_best_models_experiment/`,
-> `trying_new_losses_and_norm/`, and `train_fno2_grid_modes_interp_skip_losses_refine/`.
+> `experiment.yaml` run grid. Only the 4 model-zoo-backed experiment folders
+> remain (`comparing_best_models_mse`, `mse_loss_combinations`,
+> `edsr_norm_skip`, `ufno_mse_spectral`); all other experiment folders
+> (incl. legacy frozen scripts under `cfno_2/`, `edsr/`, etc.) were removed —
+> their record lives in git history and in this file / `MODELS.md`.
 
 ## Project Context
 

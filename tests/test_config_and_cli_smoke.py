@@ -52,13 +52,9 @@ class TestHydraCliSmoke(unittest.TestCase):
         self._run_cmd("train.py", "preset=dsfno")
         self._run_cmd("train.py", "preset=cnn")
         self._run_cmd("train.py", "preset=fno_2_2d")
-        self._run_cmd("train.py", "preset=fno_2_exp4")
 
     def test_refactored_entrypoints_cfg_compose(self):
         self._run_cmd("evaluation/experiment_2/cfno_2_eval.py")
-        self._run_cmd("experiments/grid_search_dsfno.py")
-        self._run_cmd("experiments/fno_2d_grid_search/grid_search_fno2_2d.py")
-        self._run_cmd("experiments/cfno_2/experiment_6/training_fno.py")
 
 
 if __name__ == "__main__":

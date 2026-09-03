@@ -45,7 +45,8 @@ class ExperimentConfigTest(unittest.TestCase):
         return sorted(ROOT.glob("experiments/*/experiment.yaml"))
 
     def test_configs_exist(self):
-        self.assertGreaterEqual(len(self._configs()), 11)
+        # The 4 zoo-backed experiments (model_zoo/README.md)
+        self.assertGreaterEqual(len(self._configs()), 4)
 
     def test_configs_are_valid(self):
         for path in self._configs():

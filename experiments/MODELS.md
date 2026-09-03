@@ -2,7 +2,7 @@
 
 Reference for future instances: every model variant, where its architecture lives, which configs/experiments use it, its architectural and training particularities, and the three designated **baselines**. `experiments/cfno_2/` and `experiments/edsr/` are deliberately excluded (outdated).
 
-> **Training is consolidated**: "Trained by `experiments/<name>/train_*.py`" below means the experiment's `experiments/<name>/experiment.yaml` run grid, executed by the unified engine `src/training/experiment.py`. The old per-experiment train scripts were removed.
+> **Training is consolidated**: "Trained by `experiments/<name>/train_*.py`" below means the experiment's `experiments/<name>/experiment.yaml` run grid, executed by the unified engine `src/training/experiment.py`. The old per-experiment train scripts were removed, and only the 4 model-zoo-backed experiment folders are retained (`comparing_best_models_mse`, `mse_loss_combinations`, `edsr_norm_skip`, `ufno_mse_spectral`); references to other experiment folders are historical (git history / scratch run dirs).
 
 ---
 

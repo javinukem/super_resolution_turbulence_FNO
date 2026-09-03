@@ -25,7 +25,7 @@
 
 - **Modern (live):** the Hydra tree under `configs/`. Entry: `@hydra.main(version_base="1.3", config_name="config")`. Groups: `model/`, `data/`, `training/`, `runtime/`, `preset/`, plus standalone `experiments/`, `evaluation/`, `figures/` for non-`train.py` scripts. Hydra is set to **not** chdir (`job.chdir: false`) and **not** write the `.hydra/` subdir (`output_subdir: null`) — output is managed manually via `runtime.output`.
 - **Legacy:** the top-level `config.yaml` (flat, `gpu`/`training`/`dsfno`/`fno_1`/`fno_2`/`data`/`turbulent_sim:` blocks). It is read **only** by `src/dataset_generation/*` scripts and old notebooks. Edit it only when changing simulation parameters for data generation. Do not wire new training code through it.
-- Use **presets** for end-to-end training: `python train.py preset=dsfno` (or `cnn`, `fno_2_2d`, `fno_2_exp4`, default `fno_1`). Presets are `_global_`-package files that override model+data+training+runtime together.
+- Use **presets** for end-to-end training: `python train.py preset=dsfno` (or `cnn`, `fno_2_2d`, default `fno_1`). Presets are `_global_`-package files that override model+data+training+runtime together.
 - **The default preset (`fno_1`) imports its model from `depracated/`** (`configs/model/fno_1.yaml` → `module: depracated.models_fno_1`). Do not delete `depracated/` — it is a live dependency of the default config.
 
 ## Models — relevance & gotchas
@@ -91,7 +91,7 @@ python -m src.training.experiment experiments/<name>/experiment.yaml --run <run_
 python -m src.training.experiment --manifest <run-group dir>                            # eval-only
 ```
 
-The engine owns the training loop (AdamW + ReduceLROnPlateau, grad accumulation, noise, early stopping, optional clipping/AMP), `weights.pt`/`losses.csv`/`loss_curve.png`/`config.json`, the run-group `manifest.json`, and the benchmark stage (`benchmark_metrics.csv` via `evaluation.benchmark`, copied to the home experiment folder). Do NOT write a new per-experiment training script — add a `runs:` entry to the experiment's YAML. Legacy frozen scripts remain only under `cfno_2/`, `edsr/`, `training_best_models_experiment/`, `trying_new_losses_and_norm/`, `train_fno2_grid_modes_interp_skip_losses_refine/`.
+The engine owns the training loop (AdamW + ReduceLROnPlateau, grad accumulation, noise, early stopping, optional clipping/AMP), `weights.pt`/`losses.csv`/`loss_curve.png`/`config.json`, the run-group `manifest.json`, and the benchmark stage (`benchmark_metrics.csv` via `evaluation.benchmark`, copied to the home experiment folder). Do NOT write a new per-experiment training script — add a `runs:` entry to the experiment's YAML. Only the 4 model-zoo-backed experiment folders are retained (`comparing_best_models_mse`, `mse_loss_combinations`, `edsr_norm_skip`, `ufno_mse_spectral`); the other experiment folders (incl. the legacy frozen scripts) were removed — their record lives in git history and in `experiments/experiment_summary.md` / `MODELS.md`.
 
 Beyond training, the conventions below are **mandatory for new experiments**:
 
