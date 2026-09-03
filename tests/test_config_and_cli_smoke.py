@@ -44,7 +44,10 @@ class TestHydraCliSmoke(unittest.TestCase):
         self.assertEqual(
             result.returncode,
             0,
-            msg=f"Command failed: {' '.join(cmd)}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}",
+            msg=(
+                f"Command failed: {' '.join(cmd)}\n"
+                f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+            ),
         )
 
     def test_train_presets_cfg_compose(self):
@@ -52,9 +55,6 @@ class TestHydraCliSmoke(unittest.TestCase):
         self._run_cmd("train.py", "preset=dsfno")
         self._run_cmd("train.py", "preset=cnn")
         self._run_cmd("train.py", "preset=fno_2_2d")
-
-    def test_refactored_entrypoints_cfg_compose(self):
-        self._run_cmd("evaluation/experiment_2/cfno_2_eval.py")
 
 
 if __name__ == "__main__":

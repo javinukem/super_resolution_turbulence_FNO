@@ -9,25 +9,27 @@ The script is configuration-driven: choose a ``--preset`` (which references one
 or more manifests and picks entries by name) or pass ``--manifest`` (optionally
 with ``--models name1,name2``) for a custom comparison.  Each series loads one
 row from a manifest's ``benchmark_csv`` by filtering on the manifest's
-``benchmark_row_key`` column, so the same code works for:
+``benchmark_row_key`` column.
 
-  - ``training_best_models`` manifest (row key ``model``, value = entry label)
-  - ``trying_new_losses_and_norm`` manifest (row key ``run``, value = entry name)
+Presets cover the retained (model-zoo-backed) experiments plus the repo-local
+model zoo itself:
+
+  - ``model_zoo``            — all published models + trilinear (repo-local)
+  - ``edsr_norm_skip``       — the two EDSR norm-skip runs + trilinear
+  - ``comparing_best_models_mse`` — MSE-only CFNO vs EDSR + trilinear
+  - ``mse_loss_combinations``     — MSE-based loss combos + MSE-only + trilinear
 
 Usage
 -----
-    # default preset: best CFNO shift=8 vs EDSR vs trilinear (baseline experiment)
+    # the published model zoo (default; works without scratch access)
     python evaluation/comparing_models_bar_chart.py
 
-    # all 12 loss-norm runs + trilinear baseline
-    python evaluation/comparing_models_bar_chart.py --preset loss_norm
-
-    # CFNO shift=8 MSE-only vs best EDSR vs trilinear
-    python evaluation/comparing_models_bar_chart.py --preset loss_ablation_mse_vs_edsr
+    # a retained experiment's comparison
+    python evaluation/comparing_models_bar_chart.py --preset edsr_norm_skip
 
     # custom: pick models from a manifest
-    python evaluation/comparing_models_bar_chart.py --manifest /path/to/manifest.json \
-        --models cfno_shift8,edsr
+    python evaluation/comparing_models_bar_chart.py --manifest model_zoo \
+        --models edsr_norm_skip_on,trilinear
 
     # custom ad-hoc CSV (no manifest): legacy single-series mode
     python evaluation/comparing_models_bar_chart.py --csv path/to/csv \
@@ -72,24 +74,10 @@ METRICS = [
 ]
 
 PRESET_NAMES = [
-    "baseline",
-    "loss_norm",
-    "loss_norm_cfno",
-    "best_performing",
-    "l1_spectral_best_vs_best_performing",
-    "l1_spectral_skip",
-    "ufno",
-    "loss_ablation_mse_vs_edsr",
-    "mse_spectral",
+    "model_zoo",
     "edsr_norm_skip",
-    "edsr_vs_cfno_baseline_a",
-    "spectral_weighting_l1_vs_mse",
-    "baselines_vs_edsr_norm_skip",
-    "baseline_b_500_vs_edsr",
-    "ufno_mse_spectral_500",
     "comparing_best_models_mse",
     "mse_loss_combinations",
-    "model_zoo",
 ]
 
 
@@ -98,44 +86,8 @@ PRESET_NAMES = [
 # =====================================================================
 
 
-def _best_models_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "best_models_*"))
-
-
-def _loss_norm_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "loss_norm_experiment_*"))
-
-
-def _l1_spectral_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "l1_spectral_weighting_*"))
-
-
-def _l1_spectral_skip_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "l1_spectral_skip_connection_*"))
-
-
-def _ufno_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "ufno_l1_spectral_unet_*"))
-
-
-def _loss_ablation_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "loss_ablation_*"))
-
-
-def _mse_spectral_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "mse_spectral_weighting_*"))
-
-
 def _edsr_norm_skip_manifest() -> dict:
     return load_manifest(discover_latest(SCRATCH_BASE, "edsr_norm_skip_*"))
-
-
-def _baseline_b_500_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "baseline_b_500_epochs_*"))
-
-
-def _ufno_mse_spectral_500_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "ufno_mse_spectral_500_*"))
 
 
 def _comparing_best_models_mse_manifest() -> dict:
@@ -151,134 +103,19 @@ def _model_zoo_manifest() -> dict:
     return load_manifest(ROOT / "model_zoo")
 
 
+def _trilinear_series() -> dict:
+    """Trilinear context row, sourced from the repo-local model zoo (whose
+    benchmark CSV carries trilinear rows at both eval scales)."""
+    zoo = _model_zoo_manifest()
+    return {"manifest": zoo, "model": "trilinear", "label": "Trilinear"}
+
+
 # =====================================================================
 # Preset builders — each returns a list of series specs
 # =====================================================================
 
 
-def _build_baseline(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    return [
-        {"manifest": bm, "model": "cfno_shift8", "label": "CFNO shift=8"},
-        {"manifest": bm, "model": "edsr", "label": "EDSR"},
-        {"manifest": bm, "model": "trilinear", "label": "Trilinear"},
-    ]
-
-
-def _build_loss_norm(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    series = []
-    for e in ln["models"]:
-        series.append({"manifest": ln, "model": e["name"], "label": e["label"]})
-    return series
-
-
-def _build_loss_norm_cfno(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    series = []
-    for e in ln["models"]:
-        if e["model_type"] == "cfno" or e["model_type"] == "trilinear":
-            series.append({"manifest": ln, "model": e["name"], "label": e["label"]})
-    return series
-
-
-def _build_best_performing(bm: dict, ln: dict, l1s: dict = None) -> list[dict]:
-    series = []
-    for e in ln["models"]:
-        if e["model_type"] == "cfno" and e.get("use_norm"):
-            series.append({"manifest": ln, "model": e["name"], "label": e["label"]})
-    series.append(
-        {"manifest": bm, "model": "cfno_shift8", "label": "cfno_shift8_mse_nonorm"}
-    )
-    return series
-
-
-def _build_l1_spectral_best_vs_best_performing(
-    bm: dict, ln: dict, l1s: dict
-) -> list[dict]:
-    """Top-2 l1_spectral runs (by MSE) + all best_performing models."""
-    series = []
-    csv_path = l1s["benchmark_csv"]
-    if csv_path.exists():
-        df = pd.read_csv(csv_path)
-        row_key = l1s["benchmark_row_key"]
-        value_field = l1s["benchmark_row_value_field"]
-        scored = []
-        for e in l1s["models"]:
-            if e["model_type"] == "trilinear":
-                continue
-            matches = df[df[row_key] == e[value_field]]
-            if not matches.empty:
-                scored.append((float(matches.iloc[0]["MSE"]), e))
-        scored.sort(key=lambda t: t[0])
-        for _, e in scored[:2]:
-            series.append({"manifest": l1s, "model": e["name"], "label": e["label"]})
-    else:
-        print(f"  Warning: {csv_path} not found — skipping l1_spectral entries")
-    series.extend(_build_best_performing(bm, ln))
-    return series
-
-
-def _build_l1_spectral_skip(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    """All cfno entries from the l1_spectral_skip_connection manifest (the two
-    skip=True runs and the skip=False reference) plus the trilinear baseline."""
-    series = []
-    try:
-        skip = _l1_spectral_skip_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: l1_spectral_skip manifest not found ({e}) — skipping")
-        return series
-    for e in skip["models"]:
-        series.append({"manifest": skip, "model": e["name"], "label": e["label"]})
-    return series
-
-
-def _build_ufno(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    """All entries from the ufno_l1_spectral_unet manifest (the four UFNO
-    runs, the cfno skip=False reference, and the trilinear baseline)."""
-    series = []
-    try:
-        ufno = _ufno_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: ufno manifest not found ({e}) — skipping")
-        return series
-    for e in ufno["models"]:
-        series.append({"manifest": ufno, "model": e["name"], "label": e["label"]})
-    return series
-
-
-def _build_loss_ablation_mse_vs_edsr(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    """CFNO shift=8 MSE-only (from loss_ablation) vs best EDSR vs trilinear."""
-    series = []
-    try:
-        la = _loss_ablation_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: loss_ablation manifest not found ({e}) — skipping CFNO")
-    else:
-        series.append(
-            {
-                "manifest": la,
-                "model": "cfno_shift8_mse_only",
-                "label": "FNO",
-            },
-        )
-    series.append({"manifest": bm, "model": "edsr", "label": "EDSR"})
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
-    return series
-
-
-def _build_mse_spectral(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    """All 3 MSE+spectral CFNO shift=8 runs + trilinear baseline (for context)."""
-    series = []
-    try:
-        mse_spec = _mse_spectral_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: mse_spectral manifest not found ({e}) — skipping")
-        return series
-    for e in mse_spec["models"]:
-        series.append({"manifest": mse_spec, "model": e["name"], "label": e["label"]})
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
-    return series
-
-
-def _build_edsr_norm_skip(bm: dict, ln: dict, l1s: dict) -> list[dict]:
+def _build_edsr_norm_skip() -> list[dict]:
     """Both EDSR norm-on runs (skip off/on) + trilinear baseline (for context)."""
     series = []
     try:
@@ -288,208 +125,11 @@ def _build_edsr_norm_skip(bm: dict, ln: dict, l1s: dict) -> list[dict]:
         return series
     for e in ens["models"]:
         series.append({"manifest": ens, "model": e["name"], "label": e["label"]})
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
+    series.append(_trilinear_series())
     return series
 
 
-def _build_edsr_vs_cfno_baseline_a(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    """EDSR norm-on (skip off/on) vs CFNO Baseline A (cfno_shift8_skip_trilinear
-    from l1_spectral_skip_connection) + trilinear baseline for context."""
-    series = []
-    try:
-        ens = _edsr_norm_skip_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: edsr_norm_skip manifest not found ({e}) — skipping EDSR")
-    else:
-        for e in ens["models"]:
-            series.append({"manifest": ens, "model": e["name"], "label": e["label"]})
-    try:
-        skip = _l1_spectral_skip_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: l1_spectral_skip manifest not found ({e}) — skipping CFNO")
-    else:
-        for e in skip["models"]:
-            if e["name"] == "cfno_shift8_skip_trilinear":
-                series.append(
-                    {
-                        "manifest": skip,
-                        "model": e["name"],
-                        "label": "CFNO Baseline A (skip=trilinear)",
-                    }
-                )
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
-    return series
-
-
-def _build_spectral_weighting_l1_vs_mse(
-    bm: dict, ln: dict, l1s: dict
-) -> list[dict]:
-    """L1+spectral vs MSE+spectral CFNO shift=8 weighting sweep + the base
-    L1-only and MSE-only references from loss_ablation. All three
-    ``l1_spectral_weighting`` runs (w_minor/equal/major), all three
-    ``mse_spectral_weighting`` runs (w_minor/equal/major), plus
-    ``cfno_shift8_l1_only`` and ``cfno_shift8_mse_only`` from loss_ablation as
-    the no-spectral baselines."""
-    series = []
-    for e in l1s["models"]:
-        if e.get("model_type") == "cfno":
-            series.append({"manifest": l1s, "model": e["name"], "label": e["label"]})
-    try:
-        mse_spec = _mse_spectral_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: mse_spectral manifest not found ({e}) — skipping")
-    else:
-        for entry in mse_spec["models"]:
-            series.append(
-                {"manifest": mse_spec, "model": entry["name"], "label": entry["label"]}
-            )
-    try:
-        la = _loss_ablation_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: loss_ablation manifest not found ({e}) — skipping")
-    else:
-        for name, label in [
-            ("cfno_shift8_l1_only", "L1 only (no spectral)"),
-            ("cfno_shift8_mse_only", "MSE only (no spectral)"),
-        ]:
-            try:
-                entry = get_model_entry(la, name)
-            except KeyError:
-                print(f"  Warning: '{name}' not in loss_ablation manifest — skipping")
-                continue
-            series.append(
-                {"manifest": la, "model": name, "label": label or entry["label"]}
-            )
-    return series
-
-
-def _build_baselines_vs_edsr_norm_skip(
-    bm: dict, ln: dict, l1s: dict
-) -> list[dict]:
-    """All three CFNO baselines (A, B, C) vs both EDSR norm-skip runs
-    + trilinear baseline for context."""
-    series = []
-    # CFNO Baseline C — L1+spectral no-skip w_minor (from l1_spectral_weighting)
-    for e in l1s["models"]:
-        if e.get("name") == "cfno_shift8_l1_spectral_w_minor":
-            series.append(
-                {"manifest": l1s, "model": e["name"], "label": "Baseline C (L1+spec, no skip)"}
-            )
-    # CFNO Baseline B — MSE+spectral w_minor with skip (from mse_spectral_weighting)
-    try:
-        mse_spec = _mse_spectral_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: mse_spectral manifest not found ({e}) — skipping")
-    else:
-        for e in mse_spec["models"]:
-            if e.get("weight_name") == "w_minor":
-                series.append(
-                    {"manifest": mse_spec, "model": e["name"], "label": "Baseline B (MSE+spec, skip)"}
-                )
-    # CFNO Baseline A — L1+spectral skip trilinear (from l1_spectral_skip_connection)
-    try:
-        skip = _l1_spectral_skip_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: l1_spectral_skip manifest not found ({e}) — skipping")
-    else:
-        for e in skip["models"]:
-            if e.get("name") == "cfno_shift8_skip_trilinear":
-                series.append(
-                    {"manifest": skip, "model": e["name"], "label": "Baseline A (L1+spec, skip)"}
-                )
-    # EDSR norm-skip runs
-    try:
-        ens = _edsr_norm_skip_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: edsr_norm_skip manifest not found ({e}) — skipping")
-    else:
-        for e in ens["models"]:
-            series.append({"manifest": ens, "model": e["name"], "label": e["label"]})
-    # Trilinear baseline
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
-    return series
-
-
-def _build_baseline_b_500_vs_edsr(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    """Baseline B (500 epochs) vs both EDSR norm-skip runs + trilinear."""
-    series = []
-    try:
-        b5 = _baseline_b_500_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: baseline_b_500 manifest not found ({e}) — skipping")
-    else:
-        for e in b5["models"]:
-            series.append(
-                {"manifest": b5, "model": e["name"], "label": e["label"]}
-            )
-    try:
-        ens = _edsr_norm_skip_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: edsr_norm_skip manifest not found ({e}) — skipping")
-    else:
-        for e in ens["models"]:
-            series.append({"manifest": ens, "model": e["name"], "label": e["label"]})
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
-    return series
-
-
-def _build_ufno_mse_spectral_500(bm: dict, ln: dict, l1s: dict) -> list[dict]:
-    """UFNO (best config, MSE+spectral, 500e clip_p10) vs Baseline B vs
-    Baseline D + trilinear for context.
-
-    - UFNO run: the single ``ufno_shift8_mse_spectral_w_minor_500e_clip_p10``
-      entry from the ``ufno_mse_spectral_500e`` experiment.
-    - Baseline B: the ``cfno_shift8_mse_spectral_w_minor_500e_clip_p10`` entry
-      from ``baseline_b_500_epochs`` (the canonical stabilized Baseline B).
-    - Baseline D: the ``edsr_norm_skip_on`` entry from ``edsr_norm_skip``.
-    """
-    series = []
-    # UFNO (this experiment)
-    try:
-        uf = _ufno_mse_spectral_500_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: ufno_mse_spectral_500 manifest not found ({e}) — skipping")
-    else:
-        for e in uf["models"]:
-            series.append(
-                {"manifest": uf, "model": e["name"], "label": e["label"]}
-            )
-    # Baseline B (clip_p10 — the canonical stabilized Baseline B)
-    try:
-        b5 = _baseline_b_500_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: baseline_b_500 manifest not found ({e}) — skipping")
-    else:
-        for e in b5["models"]:
-            if e.get("name") == "cfno_shift8_mse_spectral_w_minor_500e_clip_p10":
-                series.append(
-                    {
-                        "manifest": b5,
-                        "model": e["name"],
-                        "label": "Baseline B (500e, clip=1.0, p=10)",
-                    }
-                )
-    # Baseline D (EDSR norm-on, skip on)
-    try:
-        ens = _edsr_norm_skip_manifest()
-    except FileNotFoundError as e:
-        print(f"  Warning: edsr_norm_skip manifest not found ({e}) — skipping")
-    else:
-        for e in ens["models"]:
-            if e.get("name") == "edsr_norm_skip_on":
-                series.append(
-                    {
-                        "manifest": ens,
-                        "model": e["name"],
-                        "label": "Baseline D (EDSR norm, skip on)",
-                    }
-                )
-    # Trilinear baseline for context
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
-    return series
-
-
-def _build_comparing_best_models_mse(bm: dict, ln: dict, l1s: dict) -> list[dict]:
+def _build_comparing_best_models_mse() -> list[dict]:
     """MSE-only CFNO (canonical stabilized Baseline B config, 500e clip_p30)
     vs the best MSE-only EDSR (edsr_norm_skip_on, "Baseline D") + trilinear
     interpolation for context. Isolates the loss function (MSE only) across
@@ -519,11 +159,11 @@ def _build_comparing_best_models_mse(bm: dict, ln: dict, l1s: dict) -> list[dict
                         "label": "Baseline D (EDSR norm, skip on)",
                     }
                 )
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
+    series.append(_trilinear_series())
     return series
 
 
-def _build_mse_loss_combinations(bm: dict, ln: dict, l1s: dict) -> list[dict]:
+def _build_mse_loss_combinations() -> list[dict]:
     """MSE-based loss combinations on the canonical stabilized CFNO (shift=8,
     skip=trilinear, 500e clip_p30):
 
@@ -557,11 +197,11 @@ def _build_mse_loss_combinations(bm: dict, ln: dict, l1s: dict) -> list[dict]:
     else:
         for e in cbm["models"]:
             series.append({"manifest": cbm, "model": e["name"], "label": e["label"]})
-    series.append({"manifest": bm, "model": "trilinear", "label": "Trilinear"})
+    series.append(_trilinear_series())
     return series
 
 
-def _build_model_zoo(bm: dict, ln: dict, l1s: dict) -> list[dict]:
+def _build_model_zoo() -> list[dict]:
     """All entries from the repo-local model zoo (the published models plus the
     trilinear baseline). Works without access to the scratch run dirs."""
     series = []
@@ -572,24 +212,10 @@ def _build_model_zoo(bm: dict, ln: dict, l1s: dict) -> list[dict]:
 
 
 _PRESET_BUILDERS = {
-    "baseline": _build_baseline,
-    "loss_norm": _build_loss_norm,
-    "loss_norm_cfno": _build_loss_norm_cfno,
-    "best_performing": _build_best_performing,
-    "l1_spectral_best_vs_best_performing": (_build_l1_spectral_best_vs_best_performing),
-    "l1_spectral_skip": _build_l1_spectral_skip,
-    "ufno": _build_ufno,
-    "loss_ablation_mse_vs_edsr": _build_loss_ablation_mse_vs_edsr,
-    "mse_spectral": _build_mse_spectral,
+    "model_zoo": _build_model_zoo,
     "edsr_norm_skip": _build_edsr_norm_skip,
-    "edsr_vs_cfno_baseline_a": _build_edsr_vs_cfno_baseline_a,
-    "spectral_weighting_l1_vs_mse": _build_spectral_weighting_l1_vs_mse,
-    "baselines_vs_edsr_norm_skip": _build_baselines_vs_edsr_norm_skip,
-    "baseline_b_500_vs_edsr": _build_baseline_b_500_vs_edsr,
-    "ufno_mse_spectral_500": _build_ufno_mse_spectral_500,
     "comparing_best_models_mse": _build_comparing_best_models_mse,
     "mse_loss_combinations": _build_mse_loss_combinations,
-    "model_zoo": _build_model_zoo,
 }
 
 
@@ -750,7 +376,7 @@ def main():
     parser.add_argument(
         "--preset",
         choices=PRESET_NAMES,
-        default="baseline",
+        default="model_zoo",
         help="Which preset series configuration to use.",
     )
     parser.add_argument(
@@ -823,21 +449,7 @@ def main():
         out_name = "comparing_models_bar_chart_custom.png"
         data = _load_series_data(series, args.upsample_factor)
     else:
-        print("Discovering manifests …")
-
-        def _try(discover):
-            try:
-                return discover()
-            except FileNotFoundError as e:
-                print(f"  Warning: {e}")
-                return None
-
-        # Presets that only need the repo-local model zoo work scratch-free;
-        # other presets fail downstream if their manifest is missing (as before).
-        bm = _try(_best_models_manifest)
-        ln = _try(_loss_norm_manifest)
-        l1s = _try(_l1_spectral_manifest)
-        series = _PRESET_BUILDERS[args.preset](bm, ln, l1s)
+        series = _PRESET_BUILDERS[args.preset]()
         scale_tag = f" @ x{args.upsample_factor}" if args.upsample_factor != 4 else ""
         title = f"Model comparison — {args.preset} preset{scale_tag}"
         suffix = f"_x{args.upsample_factor}" if args.upsample_factor != 4 else ""

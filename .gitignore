@@ -38,3 +38,5 @@ venv/
 /model/
 experiments/**/models/
 model_zoo/*/weights.pt
+
+AGENTS.md

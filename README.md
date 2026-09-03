@@ -103,16 +103,14 @@ Canonical format is HDF5 with keys `hr_states`, `lr_states`,
 The full dataset is 500 simulations × 80 snapshots = 40 000 pairs
 (≈650 GB — not redistributed). To regenerate it, run the jf1uids-based scripts
 under `src/dataset_generation/` (they read simulation parameters from the
-legacy top-level `config.yaml`; see
-[`data/dataset_specifications.md`](data/dataset_specifications.md) for the full
-spec, split scheme, and RNG seeds).
+legacy top-level `config.yaml`; RNG seeds for the sample-level split live in
+`data/rng_seeds_160_40.pkl`).
 
 ## Repository layout
 
 ```
 configs/            Hydra config tree (model/ data/ training/ runtime/ preset/)
-data/               dataset spec, split script, RNG seeds (artifacts ignored)
-docs/               per-experiment and per-model design notes
+data/               split script, RNG seeds, Reynolds-number notes (artifacts ignored)
 evaluation/         benchmark.py, manifest.py, comparing_models_bar_chart.py
 experiments/        one folder per experiment (experiment.yaml run grid + plots + results)
 figures/            plotting scripts
