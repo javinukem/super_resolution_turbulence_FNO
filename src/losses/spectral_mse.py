@@ -6,7 +6,9 @@ import torch.nn.functional as F
 class SpectralLoss(nn.Module):
     """Velocity-only torch-FFT log-power spectral loss."""
 
-    def __init__(self, vx_idx: int, vy_idx: int, vz_idx: int, pool: int = 2):
+    def __init__(
+        self, pool: int = 2, vx_idx: int = 1, vy_idx: int = 2, vz_idx: int = 3
+    ):
         super().__init__()
         self.vel_idx = [vx_idx, vy_idx, vz_idx]
         self.pool = pool
