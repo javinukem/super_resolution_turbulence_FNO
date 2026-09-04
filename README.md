@@ -2,21 +2,28 @@
 
 **Super-resolution of compressible turbulence with Fourier neural operators.**
 Learns a 4× upsampling operator mapping low-resolution (32³) fluid states to
-high-resolution (128³) ones. Training data is synthesized with
-[**jf1uids**](https://doi.org/10.5281/zenodo.15052815) (a JAX Euler solver with
-Kolmogorov-spectrum forcing); the ML side is entirely PyTorch.
+high-resolution (128³) ones. Training data is created with
+[**astrnomix**](github.com/leo1200/astronomix) (formally known as jf1uids, a JAX Euler solver with
+Kolmogorov-spectrum forcing). The ML side is entirely PyTorch.
 
 ![Snapshot comparison](experiments/usfno/final_snapshot_comparison.png)
 
 ![Zoomed comparison](experiments/usfno/zoomed_snapshot_comparison.png)
 
-## Highlights
+## Implemented models
 
 - **SFNO (`FNO_2`)**: Conv-lift → ResBlocks → upsample → FNO operator stack,
-  with `upsample_factor` as a forward argument (variable-scale SR).
+  with `upsample_factor` as a forward argument (variable-scale SR), after the
+  arbitrary-resolution downscaling FNO of
+  [Yang et al. 2023](https://arxiv.org/abs/2305.14452); the shifted Fourier
+  modes implemented here are a novel contribution of this work.
 - **USFNO**: operator blocks with a parallel 3-D U-Net path — the
   best-performing model (**MSE ×4 = 0.00542**, ~6.9× better than trilinear).
-- **EDSR**: the purely-convolutional reference point.
+  Based on U-FNO ([Wen et al. 2021](https://arxiv.org/abs/2109.03697)); the
+  shifted Fourier modes implemented here are a novel contribution of this
+  work.
+- **EDSR**: the purely-convolutional reference point, from
+  [Lim et al. 2017](https://arxiv.org/abs/1707.02921).
 - Physics-aware evaluation: per-channel MSE, velocity-norm/vorticity losses,
   1-D power-spectrum MSE, 3-D perceptual metric, PSNR, SSIM.
 
