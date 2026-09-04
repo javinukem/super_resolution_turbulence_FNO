@@ -1,4 +1,4 @@
-name: cfno_shift8_mse_light_l1_500e_clip_p30
+name: sfno_l1
 label: MSE + light L1 (clip=0.8, p=30)
 source_experiment: experiments/mse_loss_combinations
 weights:
@@ -23,7 +23,7 @@ model:
 apply_positivity_relu: false
 normalization:
   enabled: true
-  stats_path: model_zoo/normalization_stats.npz
+  stats_path: experiments/normalization_stats.npz
 training:
   optimizer: AdamW
   learning_rate: 0.001
@@ -43,7 +43,8 @@ training:
   snapshot_index: 79
 loss:
   type: mse+l1
-  spectral_weight: null
+  mse_weight: 1.0
+  spectral_weight: 0.0
   l1_weight: 0.061635317205680454
   spectral_pool: 2
 results:

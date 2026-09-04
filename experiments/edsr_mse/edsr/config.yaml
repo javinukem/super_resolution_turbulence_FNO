@@ -1,4 +1,4 @@
-name: edsr_norm_skip_on
+name: edsr
 label: EDSR norm (skip on)
 source_experiment: experiments/edsr_norm_skip
 weights:
@@ -20,7 +20,7 @@ model:
 apply_positivity_relu: false
 normalization:
   enabled: true
-  stats_path: model_zoo/normalization_stats.npz
+  stats_path: experiments/normalization_stats.npz
 training:
   optimizer: AdamW
   learning_rate: 0.0003
@@ -40,6 +40,10 @@ training:
   snapshot_index: 79
 loss:
   type: mse
+  mse_weight: 1.0
+  spectral_weight: 0.0
+  l1_weight: 0.0
+  spectral_pool: 2
 results:
   best_val_loss: 0.03606298422584167
   final_train_loss: 0.036465722396969796

@@ -1,5 +1,5 @@
 """
-Calibrate the "light" spectral and L1 weights against MSE on normalized data.
+Calibrate the spectral and L1 weights against MSE on normalized data.
 
 Measures MSE, L1 and velocity-spectral loss on a trilinear-upsampled LR
 prediction vs the HR target, on a few batches of the normalized training set.
@@ -11,21 +11,8 @@ component:
     w_equal  = w_eq         (term balanced to MSE)
     w_major  = w_eq * 10    (term dominates, aggressive matching)
 
-This mirrors the convention in
-``experiments/mse_spectral_weighting/calibrate_weights.py`` and
-``experiments/l1_spectral_weighting/calibrate_weights.py``, but combines
-both calibrations into a single ``calibration.json`` so the training stage in
-this experiment can pick the ``w_minor`` weight for either component.
-
-Only the ``w_minor`` ("light") weights are used for training in this experiment
-(``calibration.json -> weights.{spectral,l1}.w_minor``).
-
 Results are saved to ``calibration.json`` and printed; the training script
 reads this file automatically.
-
-Usage
------
-    python experiments/mse_loss_combinations/calibrate_weights.py
 """
 
 from autocvd import autocvd
@@ -44,7 +31,7 @@ from torch.utils.data import DataLoader
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from src.dataloader.dataloader_3d import dataset_sr
+from src.dataset.dataset import dataset_sr
 
 # ── Paths & constants ─────────────────────────────────────────────────
 
@@ -61,7 +48,9 @@ CALIBRATION_JSON = OUTPUT_DIR / "calibration.json"
 
 # Reuse the l1_spectral_weighting normalization stats so all experiments
 # share identical normalization.
-NORM_STATS_PATH = ROOT / "experiments" / "l1_spectral_weighting" / "normalization_stats.npz"
+NORM_STATS_PATH = (
+    ROOT / "experiments" / "l1_spectral_weighting" / "normalization_stats.npz"
+)
 
 
 # ── Velocity indices (don't hardcode — AGENTS.md) ─────────────────────
@@ -83,7 +72,9 @@ def _get_velocity_indices() -> tuple[int, int, int]:
 class SpectralLoss(nn.Module):
     """Velocity-only torch-FFT log-power spectral loss."""
 
-    def __init__(self, vx_idx: int, vy_idx: int, vz_idx: int, pool: int = SPECTRAL_POOL):
+    def __init__(
+        self, vx_idx: int, vy_idx: int, vz_idx: int, pool: int = SPECTRAL_POOL
+    ):
         super().__init__()
         self.vel_idx = [vx_idx, vy_idx, vz_idx]
         self.pool = pool

@@ -1,11 +1,8 @@
-# Experiment config — consumed by src/training/experiment.py
-# (transcribed from the original train script; see experiment_summary.md)
-
-experiment: ufno_mse_spectral
+experiment: usfno
 output:
   scratch_root: /export/scratch/jalegria/experiments
   folder_prefix: ufno_mse_spectral_
-  repo_dir: experiments/ufno_mse_spectral
+  repo_dir: experiments/usfno
 data:
   train_h5: /export/scratch/jalegria/full_states_h5/full_states.h5
   val_h5: /export/scratch/jalegria/full_states_h5/full_states_val.h5
@@ -14,7 +11,7 @@ data:
   num_workers: 2
   eval_batch_size: 2
 normalization:
-  stats_path: model_zoo/normalization_stats.npz
+  stats_path: experiments/normalization_stats.npz
 spectral_pool: 2
 trilinear_baseline: false
 training:
@@ -30,9 +27,9 @@ training:
   grad_clip_norm: 0.8
   use_amp: false
 runs:
-- name: ufno_shift8_mse_spectral_w_minor_500e_clip_p50
-  label: UFNO op=2 drop=0.1 (500e, clip=0.8, p=30)
-  model_type: ufno
+- name: usfno
+  label: USFNO op=2 drop=0.1 (500e, clip=0.8, p=30)
+  model_type: usfno
   model_params:
     in_channel: 5
     n_channels: 32
@@ -53,6 +50,9 @@ runs:
   - 2
   loss:
     type: mse_spectral
+    mse_weight: 1.0
+    l1_weight: 0.0
+    spectral_pool: 2
     spectral_weight: 0.010326830153749945
     weight_name: w_minor
   manifest_extra:

@@ -1,6 +1,3 @@
-# Experiment config — consumed by src/training/experiment.py
-# (transcribed from the original train script; see experiment_summary.md)
-
 experiment: comparing_best_models_mse
 output:
   scratch_root: /export/scratch/jalegria/experiments
@@ -14,7 +11,7 @@ data:
   num_workers: 2
   eval_batch_size: 2
 normalization:
-  stats_path: model_zoo/normalization_stats.npz
+  stats_path: experiments/normalization_stats.npz
 spectral_pool: 2
 trilinear_baseline: false
 training:
@@ -30,9 +27,9 @@ training:
   grad_clip_norm: 0.8
   use_amp: false
 runs:
-- name: cfno_shift8_mse_only_500e_clip_p10
-  label: CFNO shift=8, MSE only (500e, clip=1.0, p=10)
-  model_type: cfno
+- name: sfno
+  label: SFNO shift=8, MSE only (500e, clip=1.0, p=10)
+  model_type: sfno
   model_params:
     in_channel: 5
     n_channels: 32

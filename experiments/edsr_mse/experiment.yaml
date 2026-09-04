@@ -1,6 +1,3 @@
-# Experiment config — consumed by src/training/experiment.py
-# (transcribed from the original train script; see experiment_summary.md)
-
 experiment: edsr_norm_skip
 output:
   scratch_root: /export/scratch/jalegria/experiments
@@ -14,7 +11,7 @@ data:
   num_workers: 2
   eval_batch_size: 2
 normalization:
-  stats_path: model_zoo/normalization_stats.npz
+  stats_path: experiments/normalization_stats.npz
 spectral_pool: 2
 trilinear_baseline: false
 training:
@@ -50,7 +47,7 @@ runs:
     type: mse
   manifest_extra:
     skip_connection: false
-- name: edsr_norm_skip_on
+- name: edsr
   label: EDSR norm (skip on)
   model_type: edsr
   model_params:

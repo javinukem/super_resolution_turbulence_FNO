@@ -6,7 +6,7 @@
 #   1. calibrate_weights.py            — measure MSE/L1/spectral on a trilinear
 #                                        upsampler, derive "light" (w_minor)
 #                                        weights, write calibration.json
-#   2. train_mse_loss_combinations.py  — train 3 CFNO runs (shift=8, skip=
+#   2. train_mse_loss_combinations.py  — train 3 SFNO runs (shift=8, skip=
 #                                        trilinear, lr=1e-3, grad clip 0.8,
 #                                        sched_patience=30, 500 epochs) with
 #                                        MSE-only loss (reuse from the
@@ -42,7 +42,7 @@ export CUDA_VISIBLE_DEVICES
 echo "== Stage 1/4: calibrate MSE/L1/spectral weights =="
 python "${SCRIPT_DIR}/calibrate_weights.py"
 
-echo "== Stage 2/4: train 3 CFNO combos (shift=8, MSE-based, 500e clip_p30) =="
+echo "== Stage 2/4: train 3 SFNO combos (shift=8, MSE-based, 500e clip_p30) =="
 cd "${REPO_ROOT}" && python -m src.training.experiment "${SCRIPT_DIR}/experiment.yaml" "$@"
 
 echo "== Stage 3/4: bar-chart comparison (preset mse_loss_combinations) =="

@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_TOP = {"experiment", "output", "data", "training", "runs"}
 REQUIRED_RUN = {"name", "label", "model_type", "loss"}
-MODEL_TYPES = {"cfno", "edsr", "ufno"}
+MODEL_TYPES = {"sfno", "edsr", "usfno"}
 LOSS_TYPES = {
     "mse", "l1", "spectral", "mse_spectral", "mse_l1", "mse_spectral_l1",
     "l1_spectral",
@@ -45,7 +45,7 @@ class ExperimentConfigTest(unittest.TestCase):
         return sorted(ROOT.glob("experiments/*/experiment.yaml"))
 
     def test_configs_exist(self):
-        # The 4 zoo-backed experiments (model_zoo/README.md)
+        # The 4 published-model-backed experiments (experiments/MODELS.md)
         self.assertGreaterEqual(len(self._configs()), 4)
 
     def test_configs_are_valid(self):

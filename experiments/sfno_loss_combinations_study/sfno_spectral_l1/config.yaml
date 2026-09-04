@@ -1,9 +1,9 @@
-name: cfno_shift8_mse_only_500e_clip_p10
-label: CFNO shift=8, MSE only (500e, clip=1.0, p=10)
-source_experiment: experiments/comparing_best_models_mse
+name: sfno_spectral_l1
+label: MSE + light spectral + light L1 (clip=0.8, p=30)
+source_experiment: experiments/mse_loss_combinations
 weights:
   huggingface_repo: javinukem/turbulence_sr
-  filename: cfno_shift8_mse_only_500e_clip_p10/weights.pt
+  filename: cfno_shift8_mse_light_spectral_l1_500e_clip_p30/weights.pt
   download: python scripts/download_weights.py
 model:
   module: src.model.models_fno_2
@@ -23,7 +23,7 @@ model:
 apply_positivity_relu: false
 normalization:
   enabled: true
-  stats_path: model_zoo/normalization_stats.npz
+  stats_path: experiments/normalization_stats.npz
 training:
   optimizer: AdamW
   learning_rate: 0.001
@@ -42,8 +42,12 @@ training:
   use_amp: false
   snapshot_index: 79
 loss:
-  type: mse
+  type: mse+spectral+l1
+  mse_weight: 1.0
+  spectral_weight: 0.0063649745225556375
+  l1_weight: 0.061635317205680454
+  spectral_pool: 2
 results:
-  best_val_loss: 0.03410063999203535
-  final_train_loss: 0.03329993642866611
-  final_val_loss: 0.03444756223605229
+  best_val_loss: 0.04573149262712552
+  final_train_loss: 0.046772552207112315
+  final_val_loss: 0.04689105829367271

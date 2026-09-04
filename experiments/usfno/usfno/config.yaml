@@ -1,18 +1,17 @@
-name: cfno_shift8_mse_light_spectral_500e_clip_p30
-label: MSE + light spectral (clip=0.8, p=30)
-source_experiment: experiments/mse_loss_combinations
+name: usfno
+label: USFNO op=2 drop=0.1 (500e, clip=0.8, p=30)
+source_experiment: experiments/ufno_mse_spectral
 weights:
   huggingface_repo: javinukem/turbulence_sr
-  filename: cfno_shift8_mse_light_spectral_500e_clip_p30/weights.pt
+  filename: ufno_shift8_mse_spectral_w_minor_500e_clip_p50/weights.pt
   download: python scripts/download_weights.py
 model:
-  module: src.model.models_fno_2
-  class_name: FNO_2
+  module: src.model.models_ufno_2
+  class_name: UFNO_2
   params:
     in_channel: 5
     n_channels: 32
     n_residual_blocks: 3
-    n_operator_blocks: 2
     modes: 16
     apply_constraint: false
     last_layer_kernel: 3
@@ -20,33 +19,36 @@ model:
     interpolation_mode: trilinear
     skip_connection: true
     skip_connection_interpolation_mode: trilinear
+    n_operator_blocks: 2
+    dropout_rate: 0.1
 apply_positivity_relu: false
 normalization:
   enabled: true
-  stats_path: model_zoo/normalization_stats.npz
+  stats_path: experiments/normalization_stats.npz
 training:
   optimizer: AdamW
   learning_rate: 0.001
   weight_decay: 0.0001
   epochs: 500
-  batch_size: 8
-  grad_accum: 8
+  batch_size: 16
+  grad_accum: 4
   effective_batch_size: 64
-  early_stop_patience: 40
+  early_stop_patience: 50
   grad_clip_norm: 0.8
   scheduler:
     type: ReduceLROnPlateau
     factor: 0.8
-    patience: 30
+    patience: 35
   noise_std: 0.01
   use_amp: false
   snapshot_index: 79
 loss:
-  type: mse+spectral
-  spectral_weight: 0.0063649745225556375
-  l1_weight: null
+  type: mse_spectral
+  mse_weight: 1.0
+  spectral_weight: 0.010326830153749945
+  l1_weight: 0.0
   spectral_pool: 2
 results:
-  best_val_loss: 0.0361059674849877
-  final_train_loss: 0.03834059774875641
-  final_val_loss: 0.03902369508376488
+  best_val_loss: 0.023008361192686216
+  final_train_loss: 0.02319816991686821
+  final_val_loss: 0.0233977668519531

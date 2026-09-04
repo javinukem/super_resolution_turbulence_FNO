@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Upload model-zoo weights to HuggingFace (one subfolder per model).
+"""Upload published-model weights to HuggingFace (one subfolder per model).
 
 Counterpart to ``scripts/download_weights.py``: pushes each model's
-``weights.pt`` from the local training-output (scratch) dirs to the Hub repo,
-so that ``download_weights.py`` can fetch them back as
-``model_zoo/<name>/weights.pt``.
+``weights.pt`` from the local training-output (scratch) dirs to the Hub repo
+(``<name>/weights.pt``, mirrored by each manifest entry's ``hf_filename``), so
+that ``download_weights.py`` can fetch them back into
+``experiments/<experiment>/<name>/``.
 
 Prerequisites:
 
@@ -28,27 +29,28 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPO_ID = "javinukem/turbulence_sr"
 
-# Zoo entry -> authoritative local weights file (training run output).
+# Published-model entry -> authoritative local weights file (training run
+# output; scratch run groups still carry the historical run-folder names).
 SCRATCH_BASE = Path("/export/scratch/jalegria/experiments")
 SOURCES = {
-    "cfno_shift8_mse_only_500e_clip_p10":
+    "sfno":
         "comparing_best_models_mse_07-23_19-47/cfno_shift8_mse_only_500e_clip_p10",
-    "cfno_shift8_mse_light_spectral_500e_clip_p30":
+    "sfno_spectral":
         "mse_loss_combinations_07-24_02-09/cfno_shift8_mse_light_spectral_500e_clip_p30",
-    "cfno_shift8_mse_light_l1_500e_clip_p30":
+    "sfno_l1":
         "mse_loss_combinations_07-24_02-09/cfno_shift8_mse_light_l1_500e_clip_p30",
-    "cfno_shift8_mse_light_spectral_l1_500e_clip_p30":
+    "sfno_spectral_l1":
         "mse_loss_combinations_07-24_02-09/cfno_shift8_mse_light_spectral_l1_500e_clip_p30",
-    "edsr_norm_skip_on":
+    "edsr":
         "edsr_norm_skip_07-03_19-48/edsr_norm_skip_on",
-    "ufno_shift8_mse_spectral_w_minor_500e_clip_p50":
+    "usfno":
         "ufno_mse_spectral_07-30_14-15/ufno_shift8_mse_spectral_w_minor_500e_clip_p50",
 }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", help="upload only this model-zoo entry")
+    parser.add_argument("--model", help="upload only this published-model entry")
     parser.add_argument(
         "--repo-id",
         default=DEFAULT_REPO_ID,
@@ -61,11 +63,12 @@ def main() -> None:
     except ImportError:
         sys.exit("huggingface_hub is not installed: pip install huggingface_hub")
 
-    manifest = json.loads((ROOT / "model_zoo" / "manifest.json").read_text())
-    names = [m["name"] for m in manifest["models"] if m.get("weights")]
+    manifest = json.loads((ROOT / "experiments" / "manifest.json").read_text())
+    entries = {m["name"]: m for m in manifest["models"] if m.get("weights")}
+    names = list(entries)
     if args.model:
         if args.model not in names:
-            sys.exit(f"model '{args.model}' not in model zoo (have: {names})")
+            sys.exit(f"model '{args.model}' not in published models (have: {names})")
         names = [args.model]
 
     for name in names:
@@ -73,11 +76,14 @@ def main() -> None:
         if not src.exists():
             print(f"[miss] {name}: {src} not found — skipping")
             continue
-        print(f"[up]   {name}: {src} -> {args.repo_id}:{name}/weights.pt")
+        # Hub layout is independent of local names: upload to the entry's
+        # hf_filename (the existing Hub path), not the local model name.
+        hf_rel = entries[name].get("hf_filename", f"{name}/weights.pt")
+        print(f"[up]   {name}: {src} -> {args.repo_id}:{hf_rel}")
         upload_file(
             repo_id=args.repo_id,
             path_or_fileobj=str(src),
-            path_in_repo=f"{name}/weights.pt",
+            path_in_repo=hf_rel,
         )
     print("done.")
 

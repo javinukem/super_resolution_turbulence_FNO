@@ -2,7 +2,7 @@
 
 Reference for future instances: every model variant, where its architecture lives, which configs/experiments use it, its architectural and training particularities, and the three designated **baselines**. `experiments/cfno_2/` and `experiments/edsr/` are deliberately excluded (outdated).
 
-> **Training is consolidated**: "Trained by `experiments/<name>/train_*.py`" below means the experiment's `experiments/<name>/experiment.yaml` run grid, executed by the unified engine `src/training/experiment.py`. The old per-experiment train scripts were removed, and only the 4 model-zoo-backed experiment folders are retained (`comparing_best_models_mse`, `mse_loss_combinations`, `edsr_norm_skip`, `ufno_mse_spectral`); references to other experiment folders are historical (git history / scratch run dirs).
+> **Training is consolidated**: "Trained by `experiments/<name>/train_*.py`" below means the experiment's `experiments/<name>/experiment.yaml` run grid, executed by the unified engine `src/training/experiment.py`. The old per-experiment train scripts were removed, and only the 4 published-model-backed experiment folders are retained (`comparing_best_models_mse`, `sfno_loss_combinations_study`, `edsr_norm_skip`, `usfno`); references to other experiment folders are historical (git history / scratch run dirs).
 
 ---
 
@@ -205,10 +205,15 @@ The flagship modern `FNO_2` (`src/model/models_fno_2.py`) has **no Hydra `config
 
 ---
 
-## Published models → `model_zoo/`
+## Published models → `experiments/`
 
 The 6 published models (Baseline-family CFNO MSE-variants, EDSR skip-on, UFNO
-clip_p50) are catalogued in `model_zoo/README.md` with per-model `config.yaml`
-training records, a portable `manifest.json`, and weights on HuggingFace
-(fetched via `scripts/download_weights.py`). Benchmark + bar chart:
-`python evaluation/comparing_models_bar_chart.py --preset model_zoo`.
+clip_p50) are centralized under `experiments/`: per-model `config.yaml`
+training records + `loss_curve.png` live in their source experiment folders
+(e.g. `experiments/comparing_best_models_mse/sfno/`),
+the portable `experiments/manifest.json` wires them into the evaluation stack,
+and the full benchmark is `experiments/benchmark_metrics.csv`. Weights are on
+HuggingFace (fetched via `scripts/download_weights.py` into
+`experiments/<experiment>/<name>/`). Benchmark + bar chart:
+`python evaluation/benchmark.py --manifest experiments` and
+`python evaluation/comparing_models_bar_chart.py --manifest experiments`.

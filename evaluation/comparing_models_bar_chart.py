@@ -11,25 +11,24 @@ with ``--models name1,name2``) for a custom comparison.  Each series loads one
 row from a manifest's ``benchmark_csv`` by filtering on the manifest's
 ``benchmark_row_key`` column.
 
-Presets cover the retained (model-zoo-backed) experiments plus the repo-local
-model zoo itself:
+Presets cover the retained published-model-backed experiments:
 
-  - ``model_zoo``            — all published models + trilinear (repo-local)
   - ``edsr_norm_skip``       — the two EDSR norm-skip runs + trilinear
   - ``comparing_best_models_mse`` — MSE-only CFNO vs EDSR + trilinear
   - ``mse_loss_combinations``     — MSE-based loss combos + MSE-only + trilinear
 
 Usage
 -----
-    # the published model zoo (default; works without scratch access)
-    python evaluation/comparing_models_bar_chart.py
-
     # a retained experiment's comparison
     python evaluation/comparing_models_bar_chart.py --preset edsr_norm_skip
 
+    # all published models + trilinear (repo-local manifest, no scratch needed)
+    python evaluation/comparing_models_bar_chart.py --manifest experiments \
+        --output experiments/comparing_models_bar_chart_published_models.png
+
     # custom: pick models from a manifest
-    python evaluation/comparing_models_bar_chart.py --manifest model_zoo \
-        --models edsr_norm_skip_on,trilinear
+    python evaluation/comparing_models_bar_chart.py --manifest experiments \
+        --models edsr,trilinear
 
     # custom ad-hoc CSV (no manifest): legacy single-series mode
     python evaluation/comparing_models_bar_chart.py --csv path/to/csv \
@@ -74,7 +73,6 @@ METRICS = [
 ]
 
 PRESET_NAMES = [
-    "model_zoo",
     "edsr_norm_skip",
     "comparing_best_models_mse",
     "mse_loss_combinations",
@@ -98,16 +96,17 @@ def _mse_loss_combinations_manifest() -> dict:
     return load_manifest(discover_latest(SCRATCH_BASE, "mse_loss_combinations_*"))
 
 
-def _model_zoo_manifest() -> dict:
-    """The repo-local published-model zoo (no scratch discovery needed)."""
-    return load_manifest(ROOT / "model_zoo")
+def _published_manifest() -> dict:
+    """The repo-local published-models manifest at ``experiments/manifest.json``
+    (no scratch discovery needed)."""
+    return load_manifest(ROOT / "experiments")
 
 
 def _trilinear_series() -> dict:
-    """Trilinear context row, sourced from the repo-local model zoo (whose
+    """Trilinear context row, sourced from the published-models manifest (whose
     benchmark CSV carries trilinear rows at both eval scales)."""
-    zoo = _model_zoo_manifest()
-    return {"manifest": zoo, "model": "trilinear", "label": "Trilinear"}
+    pub = _published_manifest()
+    return {"manifest": pub, "model": "trilinear", "label": "Trilinear"}
 
 
 # =====================================================================
@@ -131,7 +130,7 @@ def _build_edsr_norm_skip() -> list[dict]:
 
 def _build_comparing_best_models_mse() -> list[dict]:
     """MSE-only CFNO (canonical stabilized Baseline B config, 500e clip_p30)
-    vs the best MSE-only EDSR (edsr_norm_skip_on, "Baseline D") + trilinear
+    vs the best MSE-only EDSR (edsr, "Baseline D") + trilinear
     interpolation for context. Isolates the loss function (MSE only) across
     the two flagship architectures at their canonical stabilized settings."""
     series = []
@@ -151,7 +150,7 @@ def _build_comparing_best_models_mse() -> list[dict]:
         print(f"  Warning: edsr_norm_skip manifest not found ({e}) — skipping EDSR")
     else:
         for e in ens["models"]:
-            if e.get("name") == "edsr_norm_skip_on":
+            if e.get("name") == "edsr":
                 series.append(
                     {
                         "manifest": ens,
@@ -201,18 +200,7 @@ def _build_mse_loss_combinations() -> list[dict]:
     return series
 
 
-def _build_model_zoo() -> list[dict]:
-    """All entries from the repo-local model zoo (the published models plus the
-    trilinear baseline). Works without access to the scratch run dirs."""
-    series = []
-    zoo = _model_zoo_manifest()
-    for e in zoo["models"]:
-        series.append({"manifest": zoo, "model": e["name"], "label": e["label"]})
-    return series
-
-
 _PRESET_BUILDERS = {
-    "model_zoo": _build_model_zoo,
     "edsr_norm_skip": _build_edsr_norm_skip,
     "comparing_best_models_mse": _build_comparing_best_models_mse,
     "mse_loss_combinations": _build_mse_loss_combinations,
@@ -376,7 +364,6 @@ def main():
     parser.add_argument(
         "--preset",
         choices=PRESET_NAMES,
-        default="model_zoo",
         help="Which preset series configuration to use.",
     )
     parser.add_argument(
@@ -426,6 +413,9 @@ def main():
         ),
     )
     args = parser.parse_args()
+
+    if not (args.csv or args.manifest or args.preset):
+        parser.error("one of --preset, --manifest or --csv is required")
 
     if args.csv:
         csv_path = Path(args.csv)

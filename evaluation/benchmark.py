@@ -46,7 +46,7 @@ from torch.utils.data import DataLoader
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.dataloader.dataloader_3d import dataset_sr
+from src.dataset.dataset import dataset_sr
 from evaluation.manifest import (
     build_model,
     discover_latest,
@@ -342,12 +342,8 @@ class EnergyMassConservationMetric:
         B = pred.shape[0]
         total = 0.0
         for b in range(B):
-            e_pred, m_pred = self._totals(
-                pred[b].detach().cpu().float().numpy()
-            )
-            e_target, m_target = self._totals(
-                target[b].detach().cpu().float().numpy()
-            )
+            e_pred, m_pred = self._totals(pred[b].detach().cpu().float().numpy())
+            e_target, m_target = self._totals(target[b].detach().cpu().float().numpy())
             total += (e_pred - e_target) ** 2 + (m_pred - m_target) ** 2
         return total / B
 

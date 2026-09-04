@@ -14,8 +14,10 @@ everything the downstream evaluation/plotting scripts need:
       "upsample_factor": 4,
       "models": [
         {
-          "name": "cfno_shift8", "label": "CFNO (shift=8)",
-          "model_type": "cfno" | "edsr" | "trilinear",
+          "name": "sfno_spectral", "label": "SFNO (shift=8)",
+          "model_type": "sfno" | "edsr" | "usfno" | "trilinear",
+                                        # legacy scratch manifests may still
+                                        # carry "cfno"/"ufno" (accepted aliases)
           "model_params": {...},                  # kwargs for the model ctor
           "weights": "/abs/path/weights.pt" | null,
           "apply_positivity_relu": true,          # ctor kwarg for cfno/edsr
@@ -187,7 +189,7 @@ def _instantiate(entry: dict) -> nn.Module:
     mtype = entry["model_type"]
     params = dict(entry.get("model_params") or {})
     apply_relu = entry.get("apply_positivity_relu", True)
-    if mtype == "cfno":
+    if mtype in ("sfno", "cfno"):
         from src.model.models_fno_2 import FNO_2
 
         return FNO_2(**params, apply_positivity_relu=apply_relu)
@@ -195,7 +197,7 @@ def _instantiate(entry: dict) -> nn.Module:
         from src.model.models_edsr import EDSR
 
         return EDSR(**params, apply_positivity_relu=apply_relu)
-    if mtype == "ufno":
+    if mtype in ("usfno", "ufno"):
         from src.model.models_ufno_2 import UFNO_2
 
         return UFNO_2(**params, apply_positivity_relu=apply_relu)

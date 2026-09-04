@@ -47,7 +47,7 @@ Config schema
     runs:                                # the trained run grid
       - name: <run_name>
         label: <chart label>
-        model_type: cfno                 # cfno | edsr | ufno
+        model_type: sfno                 # sfno | edsr | usfno
         model_params: {...}              # ctor kwargs (not apply_positivity_relu)
         apply_positivity_relu: false
         use_norm: true
@@ -125,7 +125,10 @@ from evaluation.manifest import (
     load_norm_stats,
 )
 
-from src.losses.spectral_mse import SpectralLoss
+from src.losses.loss_build import GeneralLoss
+
+from jf1uids import SimulationConfig, get_registered_variables
+from jf1uids.option_classes.simulation_config import finalize_config
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -135,144 +138,11 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # =====================================================================
 
 
-@lru_cache(maxsize=1)
+# Could be hardcoded a flexible implementation is not needed yet
 def get_velocity_indices() -> tuple[int, int, int]:
-    from jf1uids import SimulationConfig, get_registered_variables
-    from jf1uids.option_classes.simulation_config import finalize_config
-
-    cfg = finalize_config(SimulationConfig(dimensionality=3), (5, 128, 128, 128))
+    cfg = finalize_config(SimulationConfig(dimensionality=3), (5, 4, 4, 4))
     rv = get_registered_variables(cfg)
     return rv.velocity_index.x, rv.velocity_index.y, rv.velocity_index.z
-
-
-# =====================================================================
-# Losses
-# =====================================================================
-
-
-class _ScalarLoss(nn.Module):
-    """Wrap a plain reduction='mean' loss so forward returns (loss, metrics)."""
-
-    def __init__(self, base: nn.Module):
-        super().__init__()
-        self.base = base
-
-    def forward(self, pred: torch.Tensor, target: torch.Tensor):
-        loss = self.base(pred, target)
-        return loss, {"loss": loss.item()}
-
-
-class MSESpectralLoss(nn.Module):
-    """MSE + weighted velocity spectral loss."""
-
-    def __init__(
-        self, spectral_weight: float, vx: int, vy: int, vz: int, pool: int = 2
-    ):
-        super().__init__()
-        self.mse = nn.MSELoss()
-        self.spectral = SpectralLoss(vx, vy, vz, pool)
-        self.spectral_weight = spectral_weight
-
-    def forward(self, pred: torch.Tensor, target: torch.Tensor):
-        mse = self.mse(pred, target)
-        spec, _ = self.spectral(pred, target)
-        total = mse + self.spectral_weight * spec
-        return total, {
-            "mse": mse.item(),
-            "spectral": spec.item(),
-            "total": total.item(),
-        }
-
-
-class L1SpectralLoss(nn.Module):
-    """L1 + weighted velocity spectral loss."""
-
-    def __init__(
-        self, spectral_weight: float, vx: int, vy: int, vz: int, pool: int = 2
-    ):
-        super().__init__()
-        self.l1 = nn.L1Loss()
-        self.spectral = SpectralLoss(vx, vy, vz, pool)
-        self.spectral_weight = spectral_weight
-
-    def forward(self, pred: torch.Tensor, target: torch.Tensor):
-        l1 = self.l1(pred, target)
-        spec, _ = self.spectral(pred, target)
-        total = l1 + self.spectral_weight * spec
-        return total, {"l1": l1.item(), "spectral": spec.item(), "total": total.item()}
-
-
-class MSEL1Loss(nn.Module):
-    """MSE + weighted L1."""
-
-    def __init__(self, l1_weight: float):
-        super().__init__()
-        self.mse = nn.MSELoss()
-        self.l1 = nn.L1Loss()
-        self.l1_weight = l1_weight
-
-    def forward(self, pred: torch.Tensor, target: torch.Tensor):
-        mse = self.mse(pred, target)
-        l1 = self.l1(pred, target)
-        total = mse + self.l1_weight * l1
-        return total, {"mse": mse.item(), "l1": l1.item(), "total": total.item()}
-
-
-class MSESpectralL1Loss(nn.Module):
-    """MSE + weighted spectral + weighted L1."""
-
-    def __init__(
-        self,
-        spectral_weight: float,
-        l1_weight: float,
-        vx: int,
-        vy: int,
-        vz: int,
-        pool: int = 2,
-    ):
-        super().__init__()
-        self.mse = nn.MSELoss()
-        self.spectral = SpectralLoss(vx, vy, vz, pool)
-        self.l1 = nn.L1Loss()
-        self.spectral_weight = spectral_weight
-        self.l1_weight = l1_weight
-
-    def forward(self, pred: torch.Tensor, target: torch.Tensor):
-        mse = self.mse(pred, target)
-        spec, _ = self.spectral(pred, target)
-        l1 = self.l1(pred, target)
-        total = mse + self.spectral_weight * spec + self.l1_weight * l1
-        return total, {
-            "mse": mse.item(),
-            "spectral": spec.item(),
-            "l1": l1.item(),
-            "total": total.item(),
-        }
-
-
-def build_loss_fn(
-    loss_cfg: dict, vx: int, vy: int, vz: int, pool: int = 2
-) -> nn.Module:
-    """Return the loss module for a run's ``loss`` config block."""
-    loss_cfg = dict(loss_cfg or {"type": "mse"})
-    t = loss_cfg["type"]
-    sw = loss_cfg.get("spectral_weight")
-    lw = loss_cfg.get("l1_weight")
-    if t == "mse":
-        return _ScalarLoss(nn.MSELoss())
-    if t == "l1":
-        return _ScalarLoss(nn.L1Loss())
-    if t == "spectral":
-        return SpectralLoss(vx, vy, vz, pool)
-    if t == "mse_spectral":
-        return MSESpectralLoss(sw, vx, vy, vz, pool)
-    if t == "l1_spectral":
-        return L1SpectralLoss(sw, vx, vy, vz, pool)
-    if t == "mse_l1":
-        return MSEL1Loss(lw)
-    if t == "mse_spectral_l1":
-        return MSESpectralL1Loss(sw, lw, vx, vy, vz, pool)
-    raise ValueError(f"Unknown loss type: {t}")
 
 
 def _loss_tag(loss_cfg: dict) -> str:
@@ -505,22 +375,28 @@ def train_one_run(
         patience=train_cfg["sched_patience"],
     )
 
+    # Loss initialization
     vx, vy, vz = get_velocity_indices()
-    loss_fn = build_loss_fn(
-        run.get("loss"),
-        vx,
-        vy,
-        vz,
-        config.get("spectral_pool", 2),
+    spectral_weight = run["loss"]["spectral_weight"]
+    l1_weight = run["loss"]["l1_weight"]
+    spectral_pool = config["spectral_pool"]
+    loss_fn = GeneralLoss(
+        mse_weight=1.0,
+        spectral_weight=spectral_weight,
+        l1_weight=l1_weight,
+        spectral_v_indices=(vx, vy, vz),
+        spectral_pool=spectral_pool,
     )
+
+    # AMP / Gradient Accumulation/ Noise/ Gradient clipping/ Patience
     use_amp = bool(train_cfg.get("use_amp", False))
     scaler = torch.amp.GradScaler("cuda") if use_amp else None
     grad_accum = int(train_cfg["grad_accum"])
     noise_std = train_cfg["noise_std"]
     grad_clip = train_cfg.get("grad_clip_norm")
     early_stop_patience = int(train_cfg["early_stop_patience"])
-    epochs = int(train_cfg["epochs"])
 
+    epochs = int(train_cfg["epochs"])
     train_losses: list[float] = []
     val_losses: list[float] = []
     best_val_loss = float("inf")
@@ -899,12 +775,6 @@ def main() -> None:
         parser.error("a config YAML is required (or --manifest for eval-only)")
     config = _load_config(Path(args.config))
     data_cfg = config["data"]
-
-    rv = _get_registered_variables_3d()
-    print(
-        f"  velocity_index: x={rv.velocity_index.x} "
-        f"y={rv.velocity_index.y} z={rv.velocity_index.z}"
-    )
 
     timestamp = datetime.now().strftime("%m-%d_%H-%M")
     output_dir = (

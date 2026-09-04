@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Download model-zoo weights from HuggingFace into ``model_zoo/``.
+"""Download published-model weights from HuggingFace into ``experiments/``.
 
-Weights are not tracked in git (see ``model_zoo/README.md``); they are hosted
+Weights are not tracked in git (see ``experiments/MODELS.md``); they are hosted
 on the HuggingFace Hub (one repo, one subfolder per model) and fetched with
-``huggingface_hub.hf_hub_download``. Run once after cloning:
+``huggingface_hub.hf_hub_download``. The Hub layout (``<name>/weights.pt``,
+mirrored by each manifest entry's ``hf_filename``) is independent of the local
+layout under ``experiments/<experiment>/<name>/``. Run once after cloning:
 
     python scripts/download_weights.py                 # all models
-    python scripts/download_weights.py --model edsr_norm_skip_on
+    python scripts/download_weights.py --model edsr
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ DEFAULT_REPO_ID = "javinukem/turbulence_sr"
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", help="download only this model-zoo entry")
+    parser.add_argument("--model", help="download only this published-model entry")
     parser.add_argument(
         "--repo-id",
         default=DEFAULT_REPO_ID,
@@ -31,8 +33,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--manifest",
-        default=str(ROOT / "model_zoo" / "manifest.json"),
-        help="path to the model-zoo manifest.json",
+        default=str(ROOT / "experiments" / "manifest.json"),
+        help="path to the published-models manifest.json",
     )
     args = parser.parse_args()
 
@@ -56,17 +58,18 @@ def main() -> None:
 
     failures = 0
     for entry in entries:
-        rel = entry["weights"]  # e.g. "<model_name>/weights.pt"
+        rel = entry["weights"]  # local layout, e.g. "<experiment>/<name>/weights.pt"
+        hf_rel = entry.get("hf_filename", rel)  # Hub layout, e.g. "<name>/weights.pt"
         dest = zoo_dir / rel
         if dest.exists():
             print(f"[skip]  {entry['name']} (already at {dest})")
             continue
-        print(f"[fetch] {entry['name']}  <-  {args.repo_id}:{rel}")
+        print(f"[fetch] {entry['name']}  <-  {args.repo_id}:{hf_rel}")
         try:
-            cached = hf_hub_download(repo_id=args.repo_id, filename=rel)
+            cached = hf_hub_download(repo_id=args.repo_id, filename=hf_rel)
         except Exception as e:  # network, auth, or not-yet-uploaded
             print(f"  FAILED: {e}")
-            print("  (weights may not be uploaded yet — see model_zoo/README.md)")
+            print("  (weights may not be uploaded yet — see experiments/MODELS.md)")
             failures += 1
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
