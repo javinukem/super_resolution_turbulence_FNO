@@ -1,7 +1,0 @@
-# @package _global_
-
-defaults:
-  - override /model: dsfno
-  - override /data: train_3d_dsfno
-  - override /training: dsfno
-  - override /runtime: dsfno

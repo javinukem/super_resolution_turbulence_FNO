@@ -1,9 +1,0 @@
-kind: 3d
-kwargs:
-  max_samples: 2500
-train_split: 0.8
-loaders:
-  train_num_workers: 1
-  test_num_workers: 1
-  pin_memory: true
-  persistent_workers: true

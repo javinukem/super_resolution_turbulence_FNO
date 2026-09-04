@@ -1,7 +1,0 @@
-# @package _global_
-
-defaults:
-  - override /model: cnn
-  - override /data: train_3d_cnn
-  - override /training: cnn
-  - override /runtime: cnn

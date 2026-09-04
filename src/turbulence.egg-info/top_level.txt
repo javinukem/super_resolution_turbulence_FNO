@@ -1,6 +1,0 @@
-dataloader
-dataset_generation
-model
-training
-turbulence_sr
-utils

@@ -98,14 +98,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import yaml
 from torch.utils.data import DataLoader
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from src.dataloader.dataloader_3d import dataset_sr
+from src.dataset.dataset import dataset_sr
 from evaluation.benchmark import (
     _get_registered_variables_3d,
     evaluate_model as benchmark_evaluate_model,

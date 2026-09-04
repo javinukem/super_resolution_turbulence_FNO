@@ -1,7 +1,0 @@
-# @package _global_
-
-defaults:
-  - override /model: fno_2_2d
-  - override /data: train_2d_fno2
-  - override /training: fno_2_2d
-  - override /runtime: fno_2_2d
