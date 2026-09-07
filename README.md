@@ -1,10 +1,10 @@
-# turbulence_sr
+# super_resolution_turbulence_FNO
 
 **Super-resolution of compressible turbulence with Fourier neural operators.**
 Learns a 4× upsampling operator mapping low-resolution (32³) fluid states to
 high-resolution (128³) ones. Training data is created with
 [**astronomix**](https://github.com/leo1200/astronomix) (formerly jf1uids, a JAX Euler solver with
-Kolmogorov-spectrum forcing). The ML side is entirely PyTorch. This work was done as a part of my Master Thesis for for the Astro AI group in Heidelberg IWR under Tobias Buck supervision.
+Kolmogorov-spectrum forcing). The ML side is entirely PyTorch. This work was done as a part of my Master Thesis for for the Astro AI group in Heidelberg IWR under Tobias Buck supervision. We provide the trained models in [HuggingFace](https://huggingface.co/javinukem/turbulence_sr)
 
 ![Snapshot comparison](experiments/usfno/final_snapshot_comparison.png) (First row is the target, second superresolved and third the original res)
 
@@ -42,8 +42,8 @@ Six published models (configs and loss curves under
 | Trilinear baseline | — | 0.03716 | 0.00284 | 0.21737 |
 
 ```bash
-git clone https://github.com/javinukem/turbulence_sr.git
-cd turbulence_sr
+git clone https://github.com/javinukem/super_resolution_turbulence_FNO.git
+cd super_resolution_turbulence_FNO
 pip install -r requirements.txt
 python model_acquire/download_weights.py   # fetch weights from HF into experiments/
 ```
