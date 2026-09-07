@@ -3,7 +3,7 @@ label: USFNO op=2 drop=0.1 (500e, clip=0.8, p=30)
 source_experiment: experiments/ufno_mse_spectral
 weights:
   huggingface_repo: javinukem/turbulence_sr
-  filename: ufno_shift8_mse_spectral_w_minor_500e_clip_p50/weights.pt
+  filename: usfno/usfno/weights.pt
   download: python scripts/download_weights.py
 model:
   module: src.model.models_ufno_2

@@ -4,15 +4,15 @@ import h5py
 import numpy as np
 
 from pathlib import Path
-from utils.mean_std import compute_mean_std_dataset
+from src.utils.mean_std import compute_mean_std_dataset
+from src.utils.paths import TRAIN_H5
 from typing import Optional
 
 
 class dataset_sr(Dataset):
     def __init__(
         self,
-        h5_path=Path(__file__).resolve().parents[6]
-        / "data/jalegria/full_states_h5/full_states.h5",
+        h5_path=TRAIN_H5,
         snapshot_index: Optional[int] = None,
         max_samples=None,
         use_printing=False,
@@ -123,53 +123,3 @@ class dataset_sr(Dataset):
     def __del__(self):
         if hasattr(self, "h5file"):
             self.h5file.close()
-
-
-"""
-class lazy_dataset_sr(Dataset):
-    def __init__(self,
-                kernel=np.ones((3, 3, 3)) / 27,
-                stride: int = 4,
-                h5_path=Path(__file__).resolve().parents[2] / 'data/final_states_h5/final_states.h5',
-                load_cache=True,
-                max_samples=None):
-        
-        self.h5_path = h5_path
-        self.kernel = kernel
-        self.stride = stride
-        self.max_samples = max_samples
-        
-        # Just get the dataset size, don't load data
-        with h5py.File(h5_path, "r") as f:
-            self.dataset_size = len(f["states"]) if max_samples is None else min(max_samples, len(f["states"]))
-        
-        print(f"Dataset initialized with {self.dataset_size} samples")
-        
-        # Keep HDF5 file reference for lazy loading
-        self.h5_file = None
-        
-    def _ensure_h5_open(self):
-        if self.h5_file is None:
-            self.h5_file = h5py.File(self.h5_path, "r")
-    
-    def __getitem__(self, index):
-        self._ensure_h5_open()
-        
-        # Load single sample on-demand
-        final_state = self.h5_file["states"][index]
-        
-        # Compute LR state on-the-fly
-        lr_state = convolve_lr(final_state[np.newaxis], self.stride, self.kernel)[0].astype(np.float32)
-        
-        return (
-            torch.from_numpy(final_state).float(),
-            torch.from_numpy(lr_state).float()
-        )
-    
-    def __len__(self):
-        return self.dataset_size
-    
-    def __del__(self):
-        if self.h5_file is not None:
-            self.h5_file.close()
-"""

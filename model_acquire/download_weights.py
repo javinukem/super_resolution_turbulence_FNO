@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Download published-model weights from HuggingFace into ``experiments/``.
+"""Download published-model weights from HuggingFace into experiments/.
 
-Weights are not tracked in git (see ``experiments/MODELS.md``); they are hosted
+Weights are not tracked in git, they are hosted
 on the HuggingFace Hub (one repo, one subfolder per model) and fetched with
-``huggingface_hub.hf_hub_download``. The Hub layout (``<name>/weights.pt``,
-mirrored by each manifest entry's ``hf_filename``) is independent of the local
+huggingface_hub.hf_hub_download. The Hub layout is independent of the local
 layout under ``experiments/<experiment>/<name>/``. Run once after cloning:
 
     python scripts/download_weights.py                 # all models
@@ -58,8 +57,8 @@ def main() -> None:
 
     failures = 0
     for entry in entries:
-        rel = entry["weights"]  # local layout, e.g. "<experiment>/<name>/weights.pt"
-        hf_rel = entry.get("hf_filename", rel)  # Hub layout, e.g. "<name>/weights.pt"
+        rel = entry["weights"]
+        hf_rel = entry.get("hf_filename", rel)
         dest = zoo_dir / rel
         if dest.exists():
             print(f"[skip]  {entry['name']} (already at {dest})")

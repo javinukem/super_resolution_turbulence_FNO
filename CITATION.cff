@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: If you use this software, please cite it as below.
-title: "turbulence_sr: Super-resolution of compressible turbulence with Fourier neural operators"
+title: "Turbulence super-resolution: Super-resolution of compressible turbulence with Fourier neural operators"
 authors:
-  - given-names: javinukem
+  - given-names: Javier Palau
 repository-code: https://github.com/javinukem/turbulence_sr
 license: MIT
 version: "1.0"

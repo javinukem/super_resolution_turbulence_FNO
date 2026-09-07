@@ -12,17 +12,25 @@ working without changes.
 
 Usage
 -----
-    python data/split_dataset.py
+    python src/dataset/split_dataset.py
+
+Paths are cluster-agnostic (see src/utils/paths.py): the source dataset comes
+from $TURBULENCE_SR_SOURCE_DATA and the splits are written to
+$TURBULENCE_SR_DATA.
 """
 
-import os
 import sys
 import h5py
 import numpy as np
 from pathlib import Path
 
-SRC_DIR = Path("/export/data/jalegria/full_states_h5")
-OUT_DIR = Path("/export/scratch/jalegria/full_states_h5")
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from src.utils.paths import DATA_DIR, SOURCE_DATA_DIR
+
+SRC_DIR = SOURCE_DATA_DIR
+OUT_DIR = DATA_DIR
 ORIGINAL = SRC_DIR / "full_states.h5"
 TRAIN_OUT = OUT_DIR / "full_states.h5"
 VAL_OUT = OUT_DIR / "full_states_val.h5"

@@ -1,13 +1,21 @@
 # Environment for turbulence_sr.
 # The cluster provides these; versions are intentionally unpinned.
-# NOTE: jf1uids and autocvd are NOT on PyPI — install from source:
+# NOTE: autocvd is NOT on PyPI install from source:
 #   - autocvd: https://github.com/jonasricker/autocvd
-#   - jf1uids: see https://doi.org/10.5281/zenodo.15052815
+# NOTE: the Pk_library module ships inside the Pylians package (PyPI:
+#   Pylians, sdist-only). Its build pins Cython<3, which the Cython
+#   headers of numpy >= 2.2 reject — on a fresh env install it last,
+#   with numpy==2.1.2 and "cython<3" already present, using
+#   --no-build-isolation (matches the cluster env: cython 0.29.37 /
+#   numpy 2.1.2).
 
 # Core ML
 torch
 
 # Data generation & physics metrics (JAX side only)
+# astronomix (formerly jf1uids) pulls in jax, astropy, numpy, scipy,
+# equinox, beartype and orbax-checkpoint.
+astronomix
 jax
 astropy
 
@@ -16,8 +24,8 @@ h5py
 numpy
 scipy
 
-# Physics metrics (1-D power spectra)
-Pk_library
+# Physics metrics (1-D power spectra) — provides the Pk_library module
+Pylians
 
 # Config / CLI
 hydra-core>=1.3

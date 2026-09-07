@@ -3,7 +3,7 @@ label: SFNO shift=8, MSE only (500e, clip=1.0, p=10)
 source_experiment: experiments/comparing_best_models_mse
 weights:
   huggingface_repo: javinukem/turbulence_sr
-  filename: cfno_shift8_mse_only_500e_clip_p10/weights.pt
+  filename: sfno_mse/sfno/weights.pt
   download: python scripts/download_weights.py
 model:
   module: src.model.models_fno_2

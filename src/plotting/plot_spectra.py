@@ -22,8 +22,8 @@ per-experiment ``plot_spectra.py`` scripts — the experiment is selected via
       - ``SFNO (MSE+Spectral)``
       - ``SFNO (MSE+L1)``
 
-  - ``comparing_best_models_mse`` — the same lineup as the
-    ``comparing_best_models_mse`` bar-chart preset (short display names:
+  - ``sfno_mse`` — the same lineup as the ``comparing_best_models_mse``
+    bar-chart preset (short display names:
     CFNO* -> "SFNO", Baseline D* -> "EDSR"):
       - ``SFNO``
       - ``EDSR``
@@ -39,7 +39,7 @@ Usage
 -----
     python src/plotting/plot_spectra.py --experiment usfno
     python src/plotting/plot_spectra.py --experiment sfno_loss_combinations_study
-    python src/plotting/plot_spectra.py --experiment comparing_best_models_mse --regen
+    python src/plotting/plot_spectra.py --experiment sfno_mse --regen
 """
 
 from autocvd import autocvd
@@ -63,17 +63,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from evaluation.manifest import (
-    build_model,
-    discover_latest,
-    get_model_entry,
-    load_manifest,
-    load_norm_stats,
-)
+from src.utils.model_path_load import discover_latest, load_manifest, get_model_entry
+from src.utils.mean_std import load_norm_stats
+from src.utils.model_loading import build_model
+from src.utils.paths import SCRATCH_ROOT
 
 # The comparing_best_models_mse lineup mirrors its bar-chart preset so the
 # spectra plot stays in lock-step with the bar-chart comparison.
-from evaluation.comparing_models_bar_chart import _build_comparing_best_models_mse
+from src.plotting.comparing_models_bar_chart import _build_comparing_best_models_mse
 
 # jf1uids sim imports (reference-state generation)
 from astropy import units as u
@@ -100,7 +97,6 @@ import Pk_library as PKL
 # ── Config ─────────────────────────────────────────────────────────────
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SCRATCH_BASE = Path("/export/scratch/jalegria/experiments")
 UPSAMPLE_FACTOR = 4
 GAMMA = float(Fraction(5, 3))
 
@@ -117,7 +113,7 @@ SEED = 1234
 EXPERIMENT_GLOBS = {
     "usfno": "ufno_mse_spectral_??-??_*",
     "sfno_loss_combinations_study": "mse_loss_combinations_*",
-    "comparing_best_models_mse": "comparing_best_models_mse_*",
+    "sfno_mse": "comparing_best_models_mse_*",
 }
 
 # Cross-referenced manifests (models reused, not retrained).
@@ -157,8 +153,7 @@ def _downaverage_state(state: np.ndarray, downsample_factor: int) -> np.ndarray:
     channels, hx, hy, hz = state.shape
     if hx % downsample_factor or hy % downsample_factor or hz % downsample_factor:
         raise ValueError(
-            f"State spatial shape {(hx, hy, hz)} not divisible by "
-            f"{downsample_factor}."
+            f"State spatial shape {(hx, hy, hz)} not divisible by {downsample_factor}."
         )
     lx, ly, lz = (
         hx // downsample_factor,
@@ -196,7 +191,10 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
     code_units = CodeUnits(3 * u.parsec, 1 * u.M_sun, 100 * u.km / u.s)
     t_end = (1.0e4 * u.yr).to(code_units.code_time).value
     params = SimulationParams(
-        C_cfl=0.4, dt_max=float(cfg_data["dt_max"]), gamma=5 / 3, t_end=t_end,
+        C_cfl=0.4,
+        dt_max=float(cfg_data["dt_max"]),
+        gamma=5 / 3,
+        t_end=t_end,
     )
 
     rho_0 = 2 * c.m_p / u.cm**3
@@ -206,31 +204,45 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
 
     for _ in range(8):
         u_x = create_turb_field(
-            num_cells, 1, cfg_data["turbulence_slope"],
-            cfg_data["kmin"], cfg_data["kmax"],
+            num_cells,
+            1,
+            cfg_data["turbulence_slope"],
+            cfg_data["kmin"],
+            cfg_data["kmax"],
         )
         u_y = create_turb_field(
-            num_cells, 1, cfg_data["turbulence_slope"],
-            cfg_data["kmin"], cfg_data["kmax"],
+            num_cells,
+            1,
+            cfg_data["turbulence_slope"],
+            cfg_data["kmin"],
+            cfg_data["kmax"],
         )
         u_z = create_turb_field(
-            num_cells, 1, cfg_data["turbulence_slope"],
-            cfg_data["kmin"], cfg_data["kmax"],
+            num_cells,
+            1,
+            cfg_data["turbulence_slope"],
+            cfg_data["kmin"],
+            cfg_data["kmax"],
         )
         rms = jnp.sqrt(jnp.mean(u_x**2 + u_y**2 + u_z**2))
         if not jnp.isfinite(rms) or float(rms) == 0.0:
             continue
         wanted_rms = (
             (float(cfg_data["wanted_rms"]) * u.km / u.s)
-            .to(code_units.code_velocity).value
+            .to(code_units.code_velocity)
+            .value
         )
         u_x = u_x / rms * wanted_rms
         u_y = u_y / rms * wanted_rms
         u_z = u_z / rms * wanted_rms
 
         initial_state = construct_primitive_state(
-            config=config, registered_variables=reg_vars,
-            density=rho, velocity_x=u_x, velocity_y=u_y, velocity_z=u_z,
+            config=config,
+            registered_variables=reg_vars,
+            density=rho,
+            velocity_x=u_x,
+            velocity_y=u_y,
+            velocity_z=u_z,
             gas_pressure=p,
         )
         config_run = finalize_config(config, initial_state.shape)
@@ -256,9 +268,7 @@ def get_energy_spectrum(primitive_state, config, registered_variables, gamma):
     energy = np.array(
         total_energy_from_primitives(rho, vel, p, gamma), dtype=np.float32
     )
-    return PKL.Pk(
-        delta=energy, BoxSize=1, axis=0, MAS="None", threads=6, verbose=False
-    )
+    return PKL.Pk(delta=energy, BoxSize=1, axis=0, MAS="None", threads=6, verbose=False)
 
 
 def _load_reference_states(
@@ -311,7 +321,7 @@ def _collect_usfno_models(manifest: dict) -> list[tuple[str, dict, dict]]:
         models.append((UFNO_LABEL, entry, manifest))
         break
 
-    combos_dir = discover_latest(SCRATCH_BASE, MSE_LOSS_COMBOS_GLOB)
+    combos_dir = discover_latest(SCRATCH_ROOT, MSE_LOSS_COMBOS_GLOB)
     combos_manifest = load_manifest(combos_dir)
     print(f"MSE-loss-combinations manifest: {combos_dir}")
     for entry in combos_manifest["models"]:
@@ -336,7 +346,7 @@ def _collect_sfno_loss_combination_models(
     L1 combo is excluded)."""
     models: list[tuple[str, dict, dict]] = []
 
-    mse_only_dir = discover_latest(SCRATCH_BASE, COMPARING_BEST_MODELS_GLOB)
+    mse_only_dir = discover_latest(SCRATCH_ROOT, COMPARING_BEST_MODELS_GLOB)
     mse_only_manifest = load_manifest(mse_only_dir)
     print(f"MSE-only manifest: {mse_only_dir}")
     for entry in mse_only_manifest["models"]:
@@ -368,7 +378,7 @@ def _collect_comparing_best_models_models(
 MODEL_COLLECTORS = {
     "usfno": _collect_usfno_models,
     "sfno_loss_combinations_study": _collect_sfno_loss_combination_models,
-    "comparing_best_models_mse": _collect_comparing_best_models_models,
+    "sfno_mse": _collect_comparing_best_models_models,
 }
 
 
@@ -394,7 +404,7 @@ def main() -> None:
             "Experiment folder (containing manifest.json). Overrides "
             "auto-discovery of the experiment's own manifest (cross-"
             "referenced manifests are always auto-discovered; ignored for "
-            "comparing_best_models_mse, whose lineup comes from the "
+            "sfno_mse, whose lineup comes from the "
             "bar-chart preset)."
         ),
     )
@@ -406,10 +416,10 @@ def main() -> None:
     args = parser.parse_args()
 
     # ── Discover the manifest + model lineup ───────────────────────────
-    if args.experiment == "comparing_best_models_mse":
+    if args.experiment == "sfno_mse":
         if args.manifest:
             print(
-                "  Note: --manifest is ignored for comparing_best_models_mse "
+                "  Note: --manifest is ignored for sfno_mse "
                 "(the lineup comes from the bar-chart preset)."
             )
         manifest = None
@@ -417,7 +427,7 @@ def main() -> None:
         manifest_dir = (
             Path(args.manifest)
             if args.manifest
-            else discover_latest(SCRATCH_BASE, EXPERIMENT_GLOBS[args.experiment])
+            else discover_latest(SCRATCH_ROOT, EXPERIMENT_GLOBS[args.experiment])
         )
         manifest = load_manifest(manifest_dir)
         print(f"Manifest: {manifest_dir}")

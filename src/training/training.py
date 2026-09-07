@@ -5,7 +5,7 @@ training loop (AdamW + ReduceLROnPlateau, gradient accumulation, Gaussian
 input noise, early stopping, optional grad clipping / AMP), artifact saving
 (``weights.pt``, ``losses.csv``, ``loss_curve.png``, ``config.json``), the
 run-group ``manifest.json``, and the benchmark evaluation stage
-(``benchmark_metrics.csv`` via ``evaluation.benchmark``).
+(``benchmark_metrics.csv`` via ``src.utils.benchmark``).
 
 Each experiment is a declarative YAML config (``experiments/<name>/experiment.yaml``)
 describing the run grid; experiment folders keep only the config plus plots
@@ -18,12 +18,12 @@ Config schema
 
     experiment: <name>
     output:
-      scratch_root: /export/scratch/jalegria/experiments
-      folder_prefix: <name>_            # timestamped run-group dirs
+      scratch_root: null                  # null -> $TURBULENCE_SR_SCRATCH
+      folder_prefix: <name>_              # timestamped run-group dirs
       repo_dir: experiments/<name>      # benchmark_metrics.csv copy target
     data:
-      train_h5: /abs/full_states.h5
-      val_h5: /abs/full_states_val.h5
+      train_h5: null                  # null -> $TURBULENCE_SR_DATA/full_states.h5
+      val_h5: null                    # null -> $TURBULENCE_SR_DATA/full_states_val.h5
       snapshot_index: 79
       upsample_factor: 4
       num_workers: 2
@@ -69,10 +69,10 @@ Loss types: ``mse``, ``l1``, ``spectral`` (standalone), ``mse_spectral``,
 
 Usage
 -----
-    python -m src.training.experiment experiments/<name>/experiment.yaml
-    python -m src.training.experiment experiments/<name>/experiment.yaml \
+    python -m src.training.training experiments/<name>/experiment.yaml
+    python -m src.training.training experiments/<name>/experiment.yaml \
         --run <run_name>            # train a single run from the grid
-    python -m src.training.experiment --manifest <run-group dir>   # eval-only
+    python -m src.training.training --manifest <run-group dir>   # eval-only
 """
 
 if __name__ == "__main__":
@@ -88,7 +88,6 @@ import sys
 import time
 import traceback
 from datetime import datetime
-from functools import lru_cache
 from pathlib import Path
 
 import matplotlib
@@ -105,7 +104,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.dataset.dataset import dataset_sr
-from evaluation.benchmark import (
+from src.utils.paths import SCRATCH_ROOT, TRAIN_H5, VAL_H5
+from src.utils.benchmark import (
     _get_registered_variables_3d,
     evaluate_model as benchmark_evaluate_model,
     MSEMetric,
@@ -117,13 +117,9 @@ from evaluation.benchmark import (
     PSNRMetric,
     SSIMMetric,
 )
-from evaluation.manifest import (
-    _instantiate,
-    build_model,
-    discover_latest,
-    load_manifest,
-    load_norm_stats,
-)
+from src.utils.model_path_load import discover_latest, load_manifest
+from src.utils.mean_std import load_norm_stats
+from src.utils.model_loading import _instantiate, build_model
 
 from src.losses.loss_build import GeneralLoss
 
@@ -377,8 +373,9 @@ def train_one_run(
 
     # Loss initialization
     vx, vy, vz = get_velocity_indices()
-    spectral_weight = run["loss"]["spectral_weight"]
-    l1_weight = run["loss"]["l1_weight"]
+    loss_cfg = run.get("loss") or {}
+    spectral_weight = loss_cfg.get("spectral_weight", 0.0)
+    l1_weight = loss_cfg.get("l1_weight", 0.0)
     spectral_pool = config["spectral_pool"]
     loss_fn = GeneralLoss(
         mse_weight=1.0,
@@ -738,6 +735,16 @@ def _load_config(path: Path) -> dict:
     with open(path) as f:
         config = yaml.safe_load(f)
     config["_config_path"] = str(path)
+    # Cluster-agnostic defaults (src/utils/paths.py): unset/null values fall
+    # back to the env-var-driven locations so the same YAML runs anywhere.
+    output_cfg = config.setdefault("output", {})
+    if not output_cfg.get("scratch_root"):
+        output_cfg["scratch_root"] = str(SCRATCH_ROOT)
+    data_cfg = config.setdefault("data", {})
+    if not data_cfg.get("train_h5"):
+        data_cfg["train_h5"] = str(TRAIN_H5)
+    if not data_cfg.get("val_h5"):
+        data_cfg["val_h5"] = str(VAL_H5)
     return config
 
 

@@ -17,13 +17,12 @@ x4 HR target state.
 
 Usage
 -----
-    python evaluation/benchmark.py
-    python evaluation/benchmark.py --manifest /path/to/manifest.json
+    python src/utils/benchmark.py
+    python src/utils/benchmark.py --manifest /path/to/manifest.json
 
 The script auto-selects a free GPU via ``autocvd`` when available.
 Results are printed to stdout and saved to the ``benchmark_csv`` path declared
-in the manifest (default: ``experiments/training_best_models_experiment/
-trained_on_last_snapshot/benchmark_results.csv``).
+in the manifest.
 """
 
 from autocvd import autocvd
@@ -43,25 +42,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.dataset.dataset import dataset_sr
-from evaluation.manifest import (
-    build_model,
-    discover_latest,
-    load_manifest,
-    load_norm_stats,
-)
+from src.utils.model_path_load import discover_latest, load_manifest
+from src.utils.mean_std import load_norm_stats
+from src.utils.model_loading import build_model
+from src.utils.paths import SCRATCH_ROOT, VAL_H5
 
 UPSAMPLE_FACTOR = 4
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 2
 NUM_WORKERS = 2
-VAL_H5 = Path("/export/scratch/jalegria/full_states_h5/full_states_val.h5")
 SNAPSHOT_INDEX = 79  # last snapshot per simulation only
-
-SCRATCH_BASE = Path("/export/scratch/jalegria/experiments")
 DEFAULT_MANIFEST_GLOB = "best_models_*"
 
 
@@ -493,15 +487,15 @@ def main():
         help=(
             "Path to the experiment folder (containing manifest.json). "
             "If omitted, auto-discovers the newest "
-            f"{{DEFAULT_MANIFEST_GLOB}} folder under {SCRATCH_BASE}."
+            f"{{DEFAULT_MANIFEST_GLOB}} folder under {SCRATCH_ROOT}."
         ),
     )
     args = parser.parse_args()
 
     manifest_dir = (
-        Path("/export/scratch/jalegria/experiments/", args.manifest)
+        SCRATCH_ROOT / args.manifest
         if args.manifest
-        else discover_latest(SCRATCH_BASE, DEFAULT_MANIFEST_GLOB)
+        else discover_latest(SCRATCH_ROOT, DEFAULT_MANIFEST_GLOB)
     )
     manifest = load_manifest(manifest_dir)
     results_csv = manifest["benchmark_csv"]

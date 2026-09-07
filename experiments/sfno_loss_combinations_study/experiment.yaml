@@ -1,11 +1,11 @@
 experiment: sfno_loss_combinations_study
 output:
-  scratch_root: /export/scratch/jalegria/experiments
+  scratch_root: null  # -> $TURBULENCE_SR_SCRATCH (src/utils/paths.py)
   folder_prefix: mse_loss_combinations_
   repo_dir: experiments/sfno_loss_combinations_study
 data:
-  train_h5: /export/scratch/jalegria/full_states_h5/full_states.h5
-  val_h5: /export/scratch/jalegria/full_states_h5/full_states_val.h5
+  train_h5: null  # -> $TURBULENCE_SR_DATA/full_states.h5
+  val_h5: null  # -> $TURBULENCE_SR_DATA/full_states_val.h5
   snapshot_index: 79
   upsample_factor: 4
   num_workers: 2

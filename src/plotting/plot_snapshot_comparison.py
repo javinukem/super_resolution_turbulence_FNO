@@ -20,10 +20,10 @@ This script is the jf1uids-side companion to ``train_ufno_mse_spectral.py``:
 
 Usage
 -----
-    python experiments/ufno_mse_spectral/plot_final_snapshot.py
-    python experiments/ufno_mse_spectral/plot_final_snapshot.py --regen
-    python experiments/ufno_mse_spectral/plot_final_snapshot.py \\
-        --manifest /export/scratch/jalegria/experiments/ufno_mse_spectral_...
+    python src/plotting/plot_snapshot_comparison.py
+    python src/plotting/plot_snapshot_comparison.py --regen
+    python src/plotting/plot_snapshot_comparison.py \\
+        --manifest $TURBULENCE_SR_SCRATCH/ufno_mse_spectral_...
 """
 
 from autocvd import autocvd
@@ -46,12 +46,10 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from evaluation.manifest import (
-    build_model,
-    discover_latest,
-    load_manifest,
-    load_norm_stats,
-)
+from src.utils.model_path_load import discover_latest, load_manifest
+from src.utils.mean_std import load_norm_stats
+from src.utils.model_loading import build_model
+from src.utils.paths import SCRATCH_ROOT
 
 # jf1uids sim imports
 from astropy import units as u
@@ -72,11 +70,10 @@ from jf1uids.time_stepping.time_integration import time_integration
 # ── Paths ─────────────────────────────────────────────────────────────
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SCRATCH_BASE = Path("/export/scratch/jalegria/experiments")
 # NB: the glob must NOT match the older ``ufno_mse_spectral_500_*`` experiment
 # folder (ufno_mse_spectral_500e) — the ``??-??_*`` date prefix excludes it.
 SCRATCH_GLOB = "ufno_mse_spectral_??-??_*"
-REPO_EXP_DIR = ROOT / "experiments" / "ufno_mse_spectral"
+REPO_EXP_DIR = ROOT / "experiments" / "usfno"
 REPO_EXP_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Final-snapshot sim constants (mirror loss_ablation) ──────────────
@@ -482,7 +479,7 @@ def main() -> None:
     if args.manifest:
         manifest_dir = Path(args.manifest)
     else:
-        manifest_dir = discover_latest(SCRATCH_BASE, SCRATCH_GLOB)
+        manifest_dir = discover_latest(SCRATCH_ROOT, SCRATCH_GLOB)
     manifest = load_manifest(manifest_dir)
     # The comparison plots + cached states live in the home experiment folder
     # (not the scratch run dir), per the experiment's layout convention.

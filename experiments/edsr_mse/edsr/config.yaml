@@ -3,7 +3,7 @@ label: EDSR norm (skip on)
 source_experiment: experiments/edsr_norm_skip
 weights:
   huggingface_repo: javinukem/turbulence_sr
-  filename: edsr_norm_skip_on/weights.pt
+  filename: edsr_mse/edsr/weights.pt
   download: python scripts/download_weights.py
 model:
   module: src.model.models_edsr

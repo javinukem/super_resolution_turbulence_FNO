@@ -1,3 +1,0 @@
-number,value,params_activation_f,params_feats,params_kernel_size,params_n_resblocks,state
-0,0.40927053689956666,,54,3,6,COMPLETE
-1,0.3543813109397888,prelu,74,5,2,COMPLETE

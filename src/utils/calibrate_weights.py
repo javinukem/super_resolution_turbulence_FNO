@@ -32,11 +32,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.dataset.dataset import dataset_sr
+from src.utils.paths import TRAIN_H5
 
 # ── Paths & constants ─────────────────────────────────────────────────
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-TRAIN_H5 = Path("/export/scratch/jalegria/full_states_h5/full_states.h5")
 SNAPSHOT_INDEX = 79
 N_BATCHES = 10
 BATCH_SIZE = 2

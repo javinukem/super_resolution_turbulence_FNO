@@ -20,18 +20,14 @@ Presets cover the retained published-model-backed experiments:
 Usage
 -----
     # a retained experiment's comparison
-    python evaluation/comparing_models_bar_chart.py --preset edsr_norm_skip
-
-    # all published models + trilinear (repo-local manifest, no scratch needed)
-    python evaluation/comparing_models_bar_chart.py --manifest experiments \
-        --output experiments/comparing_models_bar_chart_published_models.png
+    python src/plotting/comparing_models_bar_chart.py --preset edsr_norm_skip
 
     # custom: pick models from a manifest
-    python evaluation/comparing_models_bar_chart.py --manifest experiments \
+    python src/plotting/comparing_models_bar_chart.py --manifest <folder> \
         --models edsr,trilinear
 
     # custom ad-hoc CSV (no manifest): legacy single-series mode
-    python evaluation/comparing_models_bar_chart.py --csv path/to/csv \
+    python src/plotting/comparing_models_bar_chart.py --csv path/to/csv \
         --filter model=CFNO\\(shift=8\\),upsample_factor=4 --label "CFNO s8"
 """
 
@@ -46,13 +42,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from evaluation.manifest import discover_latest, get_model_entry, load_manifest
+from src.utils.model_path_load import discover_latest, get_model_entry, load_manifest
+from src.utils.paths import SCRATCH_ROOT
 
-SCRATCH_BASE = Path("/export/scratch/jalegria/experiments")
-OUTPUT_DIR = ROOT / "evaluation"
+OUTPUT_DIR = ROOT / "experiments"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # ── Metrics to plot (name, direction: "↓" = lower better, "↑" = higher better) ──
@@ -85,15 +81,15 @@ PRESET_NAMES = [
 
 
 def _edsr_norm_skip_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "edsr_norm_skip_*"))
+    return load_manifest(discover_latest(SCRATCH_ROOT, "edsr_norm_skip_*"))
 
 
 def _comparing_best_models_mse_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "comparing_best_models_mse_*"))
+    return load_manifest(discover_latest(SCRATCH_ROOT, "comparing_best_models_mse_*"))
 
 
 def _mse_loss_combinations_manifest() -> dict:
-    return load_manifest(discover_latest(SCRATCH_BASE, "mse_loss_combinations_*"))
+    return load_manifest(discover_latest(SCRATCH_ROOT, "mse_loss_combinations_*"))
 
 
 def _published_manifest() -> dict:
@@ -228,9 +224,7 @@ def _parse_filter(filter_str: str) -> dict:
     return result
 
 
-def _load_series_data(
-    series: list[dict], upsample_factor: int = 4
-) -> pd.DataFrame:
+def _load_series_data(series: list[dict], upsample_factor: int = 4) -> pd.DataFrame:
     """Load metric values for each series from its manifest's benchmark CSV.
 
     Returns a DataFrame indexed by series label with one column per metric.
@@ -409,7 +403,7 @@ def main():
         type=str,
         help=(
             "Output PNG path (default: "
-            "evaluation/comparing_models_bar_chart_<preset>.png)."
+            "experiments/comparing_models_bar_chart_<preset>.png)."
         ),
     )
     args = parser.parse_args()

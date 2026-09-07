@@ -3,7 +3,7 @@ label: MSE + light L1 (clip=0.8, p=30)
 source_experiment: experiments/mse_loss_combinations
 weights:
   huggingface_repo: javinukem/turbulence_sr
-  filename: cfno_shift8_mse_light_l1_500e_clip_p30/weights.pt
+  filename: sfno_loss_combinations_study/sfno_l1/weights.pt
   download: python scripts/download_weights.py
 model:
   module: src.model.models_fno_2
