@@ -29,7 +29,8 @@ km  = 1e5          # kilometre [cm]
 # mu_eff = rho0 / (m_p * n_from_P) = 2, i.e. the stored P/rho ratio is
 # inconsistent with neutral atomic H (mu=1) or fully ionized H (mu=0.5).
 # The solver does NOT use mu at all — it computes c_s = sqrt(gamma*P/rho)
-# directly (jf1uids/fluid_equations/fluid.py:328) — so the ground-truth
+# directly (astronomix, formerly jf1uids/fluid_equations/fluid.py:328) — so
+# the ground-truth
 # sound speed for the simulation is sqrt(gamma * p0 / rho0), independent
 # of any interpretation of mu or T.
 

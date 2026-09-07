@@ -123,8 +123,8 @@ from src.utils.model_loading import _instantiate, build_model
 
 from src.losses.loss_build import GeneralLoss
 
-from jf1uids import SimulationConfig, get_registered_variables
-from jf1uids.option_classes.simulation_config import finalize_config
+from astronomix import SimulationConfig, get_registered_variables
+from astronomix.option_classes.simulation_config import finalize_config
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

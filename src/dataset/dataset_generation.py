@@ -19,28 +19,37 @@ autocvd(num_gpus=1)
 # # =======================
 
 # numerics
+import jax
 import jax.numpy as jnp
 import numpy as np
 
-# jf1uids data structures
-from jf1uids import SimulationConfig
-from jf1uids import SimulationParams
-from jf1uids.option_classes.simulation_config import BACKWARDS, OSHER, FORWARDS
+# astronomix data structures
+from astronomix import SimulationConfig
+from astronomix import SimulationParams
+from astronomix.option_classes.simulation_config import (
+    BACKWARDS,
+    OSHER,
+    FORWARDS,
+)
 
-# jf1uids setup functions
-from jf1uids import get_helper_data
-from jf1uids.fluid_equations.fluid import construct_primitive_state
-from jf1uids import get_registered_variables
-from jf1uids.option_classes.simulation_config import finalize_config
+# astronomix setup functions
+from astronomix import construct_primitive_state
+from astronomix import get_registered_variables
+from astronomix.option_classes.simulation_config import (
+    SnapshotSettings,
+    finalize_config,
+)
 
 # turbulent ic setup
-from jf1uids.initial_condition_generation.turb import create_turb_field
+from astronomix.initial_condition_generation.turbulent_ic_generator import (
+    create_turb_field,
+)
 
 # main simulation function
-from jf1uids import time_integration
+from astronomix import time_integration
 
 # units
-from jf1uids import CodeUnits
+from astronomix import CodeUnits
 from astropy import units as u
 import astropy.constants as c
 
@@ -79,9 +88,11 @@ config = SimulationConfig(
     differentiation_mode=FORWARDS,
     return_snapshots=config_file["turbulent_sim"]["return_snapshots"],
     num_snapshots=config_file["turbulent_sim"]["num_snapshots"],
+    snapshot_settings=SnapshotSettings(
+        return_states=True, return_total_mass=True, return_total_energy=True
+    ),
 )
 
-helper_data = get_helper_data(config)
 registered_variables = get_registered_variables(config)
 
 # setup the unit system
@@ -164,10 +175,12 @@ mass_dataset = h5f.create_dataset(
 )
 
 snapshot_counter = 0
+rng_key = jax.random.PRNGKey(0)
 while i < max_sims:
-    u_x = create_turb_field(config.num_cells, 1, turbulence_slope, kmin, kmax)
-    u_y = create_turb_field(config.num_cells, 1, turbulence_slope, kmin, kmax)
-    u_z = create_turb_field(config.num_cells, 1, turbulence_slope, kmin, kmax)
+    rng_key, key_x, key_y, key_z = jax.random.split(rng_key, 4)
+    u_x = create_turb_field(config.num_cells, 1, turbulence_slope, kmin, kmax, key_x)
+    u_y = create_turb_field(config.num_cells, 1, turbulence_slope, kmin, kmax, key_y)
+    u_z = create_turb_field(config.num_cells, 1, turbulence_slope, kmin, kmax, key_z)
 
     # scale the turbulence to the desired rms velocity
     rms_vel = jnp.sqrt(jnp.mean(u_x**2 + u_y**2 + u_z**2))
@@ -190,7 +203,7 @@ while i < max_sims:
 
     config = finalize_config(config, initial_state.shape)
     result = time_integration(
-        initial_state, config, params, helper_data, registered_variables
+        initial_state, config, params, registered_variables
     )
 
     if np.all(result.states[-1] == 0):

@@ -29,7 +29,7 @@ per-experiment ``plot_spectra.py`` scripts — the experiment is selected via
       - ``EDSR``
       - ``Trilinear``
 
-The HR/LR reference states are the **same** jf1uids-simulated state (seed
+The HR/LR reference states are the **same** astronomix-simulated state (seed
 1234, 128³) across experiments — loaded from the experiment folder's shared
 ``comparison_states.npy`` cache when available, and regenerated on the fly
 otherwise — so the spectra plot stays consistent with the final-snapshot
@@ -72,25 +72,32 @@ from src.utils.paths import SCRATCH_ROOT
 # spectra plot stays in lock-step with the bar-chart comparison.
 from src.plotting.comparing_models_bar_chart import _build_comparing_best_models_mse
 
-# jf1uids sim imports (reference-state generation)
+# astronomix sim imports (reference-state generation)
 from astropy import units as u
 import astropy.constants as c
+import jax
 import jax.numpy as jnp
-from jf1uids import (
+from astronomix import (
     CodeUnits,
     SimulationConfig,
     SimulationParams,
-    get_helper_data,
+    construct_primitive_state,
     get_registered_variables,
 )
-from jf1uids.fluid_equations.fluid import (
-    construct_primitive_state,
+from astronomix._fluid_equations.total_quantities import (
     get_absolute_velocity,
     total_energy_from_primitives,
 )
-from jf1uids.initial_condition_generation.turb import create_turb_field
-from jf1uids.option_classes.simulation_config import HLL, FORWARDS, finalize_config
-from jf1uids.time_stepping.time_integration import time_integration
+from astronomix.initial_condition_generation.turbulent_ic_generator import (
+    create_turb_field,
+)
+from astronomix.option_classes.simulation_config import (
+    HLL,
+    FORWARDS,
+    SnapshotSettings,
+    finalize_config,
+)
+from astronomix.time_stepping.time_integration import time_integration
 
 import Pk_library as PKL
 
@@ -169,6 +176,7 @@ def _downaverage_state(state: np.ndarray, downsample_factor: int) -> np.ndarray:
 def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
     cfg_data = _load_turbulent_cfg()
     np.random.seed(seed)
+    rng_key = jax.random.PRNGKey(seed)
 
     config = SimulationConfig(
         runtime_debugging=False,
@@ -184,8 +192,8 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
         mhd=False,
         return_snapshots=True,
         num_snapshots=2,
+        snapshot_settings=SnapshotSettings(return_states=True),
     )
-    helper_data = get_helper_data(config)
     reg_vars = get_registered_variables(config)
 
     code_units = CodeUnits(3 * u.parsec, 1 * u.M_sun, 100 * u.km / u.s)
@@ -203,12 +211,14 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
     p = jnp.ones((num_cells,) * 3) * p_0.to(code_units.code_pressure).value
 
     for _ in range(8):
+        rng_key, key_x, key_y, key_z = jax.random.split(rng_key, 4)
         u_x = create_turb_field(
             num_cells,
             1,
             cfg_data["turbulence_slope"],
             cfg_data["kmin"],
             cfg_data["kmax"],
+            key_x,
         )
         u_y = create_turb_field(
             num_cells,
@@ -216,6 +226,7 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
             cfg_data["turbulence_slope"],
             cfg_data["kmin"],
             cfg_data["kmax"],
+            key_y,
         )
         u_z = create_turb_field(
             num_cells,
@@ -223,6 +234,7 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
             cfg_data["turbulence_slope"],
             cfg_data["kmin"],
             cfg_data["kmax"],
+            key_z,
         )
         rms = jnp.sqrt(jnp.mean(u_x**2 + u_y**2 + u_z**2))
         if not jnp.isfinite(rms) or float(rms) == 0.0:
@@ -247,7 +259,7 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
         )
         config_run = finalize_config(config, initial_state.shape)
         result = time_integration(
-            initial_state, config_run, params, helper_data, reg_vars
+            initial_state, config_run, params, reg_vars
         )
         snapshot = np.array(result.states[-1], dtype=np.float32)
         if np.isfinite(snapshot).all():
@@ -278,7 +290,7 @@ def _load_reference_states(
 
     Reuses the ``comparison_states.npy`` cache written by
     ``plot_final_snapshot.py`` when available (and ``--regen`` is not set);
-    otherwise regenerates the jf1uids HR state (seed 1234, 128³) and
+    otherwise regenerates the astronomix HR state (seed 1234, 128³) and
     block-averages it down to 32³ — identical to plot_final_snapshot's path.
     """
     if not regen and states_npy.exists():
@@ -289,7 +301,7 @@ def _load_reference_states(
         lr = cached["lr"] if "lr" in cached else cached["lr4"]
         return cached["hr"], lr
 
-    print("Generating HR state via jf1uids (seed 1234, 128³) …")
+    print("Generating HR state via astronomix (seed 1234, 128³) …")
     hr = _generate_hr_state(HR_NUM_CELLS, SEED)
     lr4 = _downaverage_state(hr, UPSAMPLE_FACTOR)
     print(f"  HR {hr.shape}  LR(x4) {lr4.shape}")
@@ -411,7 +423,7 @@ def main() -> None:
     parser.add_argument(
         "--regen",
         action="store_true",
-        help="Force fresh jf1uids sim (ignore cached comparison_states.npy).",
+        help="Force fresh astronomix sim (ignore cached comparison_states.npy).",
     )
     args = parser.parse_args()
 
@@ -446,8 +458,8 @@ def main() -> None:
     hr_state, lr_state = _load_reference_states(args.regen, states_npy)
     lr_device = torch.from_numpy(lr_state).to(DEVICE)
 
-    # ── jf1uids setup (needed for the energy spectrum) ─────────────────
-    print("Setting up jf1uids config …")
+    # ── astronomix setup (needed for the energy spectrum) ───────────────
+    print("Setting up astronomix config …")
     config = SimulationConfig(dimensionality=3)
     config = finalize_config(config, hr_state.shape)
     registered_variables = get_registered_variables(config)

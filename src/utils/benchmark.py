@@ -66,9 +66,9 @@ DEFAULT_MANIFEST_GLOB = "best_models_*"
 
 @lru_cache(maxsize=1)
 def _get_registered_variables_3d():
-    """Return jf1uids registered variable indices for 3-D primitive states."""
-    from jf1uids import SimulationConfig, get_registered_variables
-    from jf1uids.option_classes.simulation_config import finalize_config
+    """Return astronomix registered variable indices for 3-D primitive states."""
+    from astronomix import SimulationConfig, get_registered_variables
+    from astronomix.option_classes.simulation_config import finalize_config
 
     cfg = finalize_config(SimulationConfig(dimensionality=3), (5, 128, 128, 128))
     return get_registered_variables(cfg)
@@ -226,7 +226,7 @@ class SpectralMSEMetric:
 
     Uses the same physics pipeline as ``figures/spectra.py``: the primitive
     state (density, velocity, pressure) is converted to total energy via
-    jf1uids, and the shell-averaged power spectrum P(k) is computed with
+    astronomix, and the shell-averaged power spectrum P(k) is computed with
     ``Pk_library.Pk``.  The metric is the MSE between the log₁₀ P(k) curves
     (log-space so that all wavenumber decades contribute equally).
     """
@@ -236,8 +236,12 @@ class SpectralMSEMetric:
     def __init__(self):
         import jax.numpy as jnp
         from fractions import Fraction
-        from jf1uids import SimulationConfig, get_helper_data, get_registered_variables
-        from jf1uids.option_classes.simulation_config import finalize_config
+        from astronomix import (
+            SimulationConfig,
+            get_helper_data,
+            get_registered_variables,
+        )
+        from astronomix.option_classes.simulation_config import finalize_config
 
         self._jnp = jnp
         self._gamma = float(Fraction("5/3"))
@@ -252,7 +256,7 @@ class SpectralMSEMetric:
     def _energy_spectrum(self, state_np: np.ndarray) -> np.ndarray:
         """Return the 1-D power spectrum for a single (C, N, N, N) state."""
         import Pk_library as PKL
-        from jf1uids.fluid_equations.fluid import (
+        from astronomix._fluid_equations.total_quantities import (
             get_absolute_velocity,
             total_energy_from_primitives,
         )
@@ -288,7 +292,8 @@ class EnergyMassConservationMetric:
     """MSE of conserved totals (total energy + total mass) between SR and HR.
 
     For each state the *total energy* field is obtained from the primitive
-    state via ``jf1uids.fluid_equations.fluid.total_energy_from_primitives``
+    state via ``total_energy_from_primitives`` (astronomix
+    ``_fluid_equations.total_quantities``)
     (per-cell energy, summed over the volume → scalar), and the *total mass*
     is the volume sum of the density channel.  The metric is the
     batch-averaged sum of squared deviations:
@@ -306,8 +311,8 @@ class EnergyMassConservationMetric:
     def __init__(self):
         import jax.numpy as jnp
         from fractions import Fraction
-        from jf1uids import SimulationConfig, get_registered_variables
-        from jf1uids.option_classes.simulation_config import finalize_config
+        from astronomix import SimulationConfig, get_registered_variables
+        from astronomix.option_classes.simulation_config import finalize_config
 
         self._jnp = jnp
         self._gamma = float(Fraction("5/3"))
@@ -316,7 +321,7 @@ class EnergyMassConservationMetric:
         self._registered_variables = get_registered_variables(cfg)
 
     def _totals(self, state_np: np.ndarray) -> tuple[float, float]:
-        from jf1uids.fluid_equations.fluid import (
+        from astronomix._fluid_equations.total_quantities import (
             get_absolute_velocity,
             total_energy_from_primitives,
         )

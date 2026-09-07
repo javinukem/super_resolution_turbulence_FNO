@@ -4,21 +4,21 @@ import numpy as np
 # timing
 from timeit import default_timer as timer
 
-# jf1uids data structures
-from jf1uids import SimulationConfig
-from jf1uids.option_classes.simulation_config import BACKWARDS, OSHER, FORWARDS
+# astronomix data structures
+from astronomix import SimulationConfig
+from astronomix.option_classes.simulation_config import BACKWARDS, OSHER, FORWARDS
 
-# jf1uids setup functions
-from jf1uids import get_helper_data
-from jf1uids import get_registered_variables
-from jf1uids.option_classes.simulation_config import finalize_config
+# astronomix setup functions
+from astronomix import get_helper_data
+from astronomix import get_registered_variables
+from astronomix.option_classes.simulation_config import finalize_config
 
 # units
-from jf1uids import CodeUnits
+from astronomix import CodeUnits
 from astropy import units as u
 import astropy.constants as c
 from fractions import Fraction
-from jf1uids.fluid_equations.fluid import get_absolute_velocity
+from astronomix._fluid_equations.total_quantities import get_absolute_velocity
 
 import sys
 import os

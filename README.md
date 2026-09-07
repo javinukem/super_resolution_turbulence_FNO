@@ -3,10 +3,10 @@
 **Super-resolution of compressible turbulence with Fourier neural operators.**
 Learns a 4× upsampling operator mapping low-resolution (32³) fluid states to
 high-resolution (128³) ones. Training data is created with
-[**astrnomix**](github.com/leo1200/astronomix) (formally known as jf1uids, a JAX Euler solver with
-Kolmogorov-spectrum forcing). The ML side is entirely PyTorch.
+[**astronomix**](https://github.com/leo1200/astronomix) (formerly jf1uids, a JAX Euler solver with
+Kolmogorov-spectrum forcing). The ML side is entirely PyTorch. This work was done as a part of my Master Thesis for for the Astro AI group in Heidelberg IWR under Tobias Buck supervision.
 
-![Snapshot comparison](experiments/usfno/final_snapshot_comparison.png)
+![Snapshot comparison](experiments/usfno/final_snapshot_comparison.png) (First row is the target, second superresolved and third the original res)
 
 ![Zoomed comparison](experiments/usfno/zoomed_snapshot_comparison.png)
 
@@ -30,8 +30,7 @@ Kolmogorov-spectrum forcing). The ML side is entirely PyTorch.
 ## Published models
 
 Six published models (configs and loss curves under
-`experiments/<experiment>/<model>/`, weights on HuggingFace). Full catalog in
-[`experiments/MODELS.md`](experiments/MODELS.md).
+`experiments/<experiment>/<model>/`, weights on [HuggingFace](https://huggingface.co/javinukem/turbulence_sr). 
 
 | Model | Loss | MSE ×4 | Vorticity ×4 | Spectral ×4 |
 |---|---|---|---|---|
@@ -46,35 +45,45 @@ Six published models (configs and loss curves under
 git clone https://github.com/javinukem/turbulence_sr.git
 cd turbulence_sr
 pip install -r requirements.txt
-python scripts/download_weights.py   # fetch weights from HF into experiments/
+python model_acquire/download_weights.py   # fetch weights from HF into experiments/
 ```
 
-> `jf1uids` and `autocvd` are not on PyPI — install from source only if you
-> need dataset generation / physics metrics / GPU device pinning.
+> `autocvd` (GPU device pinning) and `Pylians` (physics metrics) are not plain
+> PyPI installs — see `requirements.txt`.
 
 ## Usage
 
+All commands run from the repo root (GPU scripts auto-select a free device
+via `autocvd`).
+
 ```bash
-# evaluate a published model (GPU required)
-python evaluation/benchmark.py --manifest experiments
+# train an experiment (unified engine, declarative YAML run grid)
+python -m src.training.training experiments/usfno/experiment.yaml
+python -m src.training.training experiments/usfno/experiment.yaml --run usfno   # single run
+python -m src.training.training --manifest <run-group dir>                     # eval-only
 
-# train (Hydra presets: dsfno, cnn, fno_2_2d; default: fno_1)
-python train.py preset=dsfno
+# benchmark a trained run group (omit --manifest to auto-discover the newest
+# under $TURBULENCE_SR_SCRATCH)
+python -m src.utils.benchmark --manifest <run-group dir>
 
-# run an experiment (unified engine, declarative YAML)
-bash experiments/edsr_norm_skip/run.sh
+# comparison bar chart (presets: edsr_norm_skip, comparing_best_models_mse,
+# mse_loss_combinations; default output experiments/comparing_models_bar_chart_<preset>.png)
+python -m src.plotting.comparing_models_bar_chart --preset mse_loss_combinations
 
-# tests (GPU-free smoke tests)
+# fetch published weights from HuggingFace (GPU not required)
+python model_acquire/download_weights.py
+
+# tests (GPU-free)
 python -m pytest tests/ -v
 ```
 
 ## Data
 
 HDF5 with keys `hr_states` `(N, 5, 128, 128, 128)` and `lr_states`
-`(N, 5, 32, 32, 32)` (channels follow the jf1uids primitive order
+`(N, 5, 32, 32, 32)` (channels follow the astronomix primitive order
 `[density, vx, vy, vz, pressure]`). The full dataset is 500 simulations ×
 80 snapshots = 40 000 pairs (≈650 GB — not redistributed); regenerate it with
-the jf1uids-based scripts under `src/dataset_generation/`.
+the astronomix-based script under `src/dataset/`.
 
 All data/output locations resolve via environment variables with
 repo-relative defaults (see `src/utils/paths.py`), so the repo runs on any
@@ -89,19 +98,19 @@ export TURBULENCE_SR_SCRATCH=/path/to/run_groups      # default: runs/experiment
 ## Repository layout
 
 ```
-configs/            Hydra config tree (presets compose model+data+training)
-evaluation/         benchmark.py, manifest.py, comparing_models_bar_chart.py
-experiments/        one folder per experiment; published models + manifest.json
-src/                model/, training/, dataloader/, dataset_generation/, utils/
-tests/              unittest smoke tests (pytest-compatible)
-train.py            Hydra training entrypoint
+experiments/        one folder per published experiment: experiment.yaml,
+                    per-model config.yaml + loss_curve.png, benchmark CSVs,
+                    comparison plots
+model_acquire/      HuggingFace weight upload/download helpers
+src/dataset/        lazy HDF5 dataset, simulation-level splitter, astronomix
+                    data generation
+src/losses/         MSE / spectral loss building blocks
+src/model/          SFNO, USFNO, EDSR architectures and FNO layers
+src/plotting/       bar-chart, snapshot and spectra comparison plots
+src/training/       unified experiment trainer (declarative YAML run grids)
+src/utils/          benchmark, model (re)loading, path resolution, calibration
+tests/              GPU-free unittest suite
 ```
-
-## Known limitations
-
-- Two train/val split schemes coexist (sample-level vs simulation-level) —
-  see `experiments/experiment_summary.md`.
-- `n_operator_blocks ≥ 3` diverges (NaN); published configs cap it at 2.
 
 ## Citation & license
 

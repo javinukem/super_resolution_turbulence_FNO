@@ -58,8 +58,8 @@ NORM_STATS_PATH = (
 
 @lru_cache(maxsize=1)
 def _get_velocity_indices() -> tuple[int, int, int]:
-    from jf1uids import SimulationConfig, get_registered_variables
-    from jf1uids.option_classes.simulation_config import finalize_config
+    from astronomix import SimulationConfig, get_registered_variables
+    from astronomix.option_classes.simulation_config import finalize_config
 
     cfg = finalize_config(SimulationConfig(dimensionality=3), (5, 128, 128, 128))
     rv = get_registered_variables(cfg)

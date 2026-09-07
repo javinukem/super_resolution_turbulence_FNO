@@ -1,7 +1,7 @@
 """
 Final-snapshot comparison plots for the UFNO (MSE+spectral, 500e clip_p30) run.
 
-Runs a fresh jf1uids turbulent simulation (seed 1234, 128^3), block-averages
+Runs a fresh astronomix turbulent simulation (seed 1234, 128^3), block-averages
 to LR, runs the trained UFNO model from the ufno_mse_spectral manifest, and
 produces two PNGs in the home experiment folder:
 
@@ -14,7 +14,7 @@ produces two PNGs in the home experiment folder:
 
 States are cached to ``comparison_states.npy`` in the home experiment folder.
 
-This script is the jf1uids-side companion to ``train_ufno_mse_spectral.py``:
+This script is the astronomix-side companion to ``train_ufno_mse_spectral.py``:
 ``run.sh`` invokes it after training. Ported from
 ``experiments/ufno_mse_spectral_500e/plot_final_snapshot.py`` (with zoom).
 
@@ -51,21 +51,28 @@ from src.utils.mean_std import load_norm_stats
 from src.utils.model_loading import build_model
 from src.utils.paths import SCRATCH_ROOT
 
-# jf1uids sim imports
+# astronomix sim imports
 from astropy import units as u
 import astropy.constants as c
+import jax
 import jax.numpy as jnp
-from jf1uids import (
+from astronomix import (
     CodeUnits,
     SimulationConfig,
     SimulationParams,
-    get_helper_data,
+    construct_primitive_state,
     get_registered_variables,
 )
-from jf1uids.fluid_equations.fluid import construct_primitive_state
-from jf1uids.initial_condition_generation.turb import create_turb_field
-from jf1uids.option_classes.simulation_config import HLL, FORWARDS, finalize_config
-from jf1uids.time_stepping.time_integration import time_integration
+from astronomix.initial_condition_generation.turbulent_ic_generator import (
+    create_turb_field,
+)
+from astronomix.option_classes.simulation_config import (
+    HLL,
+    FORWARDS,
+    SnapshotSettings,
+    finalize_config,
+)
+from astronomix.time_stepping.time_integration import time_integration
 
 # ── Paths ─────────────────────────────────────────────────────────────
 
@@ -118,6 +125,7 @@ def _downaverage_state(state: np.ndarray, downsample_factor: int) -> np.ndarray:
 def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
     cfg_data = _load_turbulent_cfg()
     np.random.seed(seed)
+    rng_key = jax.random.PRNGKey(seed)
 
     config = SimulationConfig(
         runtime_debugging=False,
@@ -133,8 +141,8 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
         mhd=False,
         return_snapshots=True,
         num_snapshots=2,
+        snapshot_settings=SnapshotSettings(return_states=True),
     )
-    helper_data = get_helper_data(config)
     reg_vars = get_registered_variables(config)
 
     code_units = CodeUnits(3 * u.parsec, 1 * u.M_sun, 100 * u.km / u.s)
@@ -152,12 +160,14 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
     p = jnp.ones((num_cells,) * 3) * p_0.to(code_units.code_pressure).value
 
     for _ in range(8):
+        rng_key, key_x, key_y, key_z = jax.random.split(rng_key, 4)
         u_x = create_turb_field(
             num_cells,
             1,
             cfg_data["turbulence_slope"],
             cfg_data["kmin"],
             cfg_data["kmax"],
+            key_x,
         )
         u_y = create_turb_field(
             num_cells,
@@ -165,6 +175,7 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
             cfg_data["turbulence_slope"],
             cfg_data["kmin"],
             cfg_data["kmax"],
+            key_y,
         )
         u_z = create_turb_field(
             num_cells,
@@ -172,6 +183,7 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
             cfg_data["turbulence_slope"],
             cfg_data["kmin"],
             cfg_data["kmax"],
+            key_z,
         )
         rms = jnp.sqrt(jnp.mean(u_x**2 + u_y**2 + u_z**2))
         if not jnp.isfinite(rms) or float(rms) == 0.0:
@@ -196,7 +208,7 @@ def _generate_hr_state(num_cells: int, seed: int) -> np.ndarray:
         )
         config_run = finalize_config(config, initial_state.shape)
         result = time_integration(
-            initial_state, config_run, params, helper_data, reg_vars
+            initial_state, config_run, params, reg_vars
         )
         snapshot = np.array(result.states[-1], dtype=np.float32)
         if np.isfinite(snapshot).all():
@@ -373,7 +385,7 @@ def _build_states(regen: bool, manifest: dict, states_npy: Path) -> dict:
             return states
         print(f"  Cached states are stale (missing {missing}) — regenerating.")
 
-    print("Generating HR state via jf1uids …")
+    print("Generating HR state via astronomix …")
     hr = _generate_hr_state(HR_NUM_CELLS, SEED)
     lr = _downaverage_state(hr, UPSAMPLE_FACTOR)
     print(f"  HR {hr.shape}  LR {lr.shape}")
@@ -472,7 +484,7 @@ def main() -> None:
     parser.add_argument(
         "--regen",
         action="store_true",
-        help="Force fresh jf1uids sim + inference (ignore cached states).",
+        help="Force fresh astronomix sim + inference (ignore cached states).",
     )
     args = parser.parse_args()
 
