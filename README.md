@@ -4,7 +4,7 @@
 Learns a 4× upsampling operator mapping low-resolution (32³) fluid states to
 high-resolution (128³) ones. Training data is created with
 [**astronomix**](https://github.com/leo1200/astronomix) (formerly jf1uids, a JAX Euler solver with
-Kolmogorov-spectrum forcing). The ML side is entirely PyTorch. This work was done as a part of my Master Thesis for for the Astro AI group in Heidelberg IWR under Tobias Buck supervision. We provide the trained models in [HuggingFace](https://huggingface.co/javinukem/turbulence_sr)
+Kolmogorov-spectrum forcing). The ML side is entirely PyTorch. This work was done as a part of my Master Thesis for for the Astro AI group in Heidelberg IWR under Tobias Buck supervision. We provide the trained models in [HuggingFace](https://huggingface.co/javinukem/turbulence_sr), read the complete thesis [here](https://github.com/javinukem/master-thesis-hybrid-ml-simulation-ism).
 
 ![Snapshot comparison](experiments/usfno/final_snapshot_comparison.png) (First row is the target, second superresolved and third the original res)
 
